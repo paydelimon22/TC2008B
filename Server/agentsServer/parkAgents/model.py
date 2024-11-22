@@ -13,7 +13,7 @@ class ParkModel(Model):
         N: Number of agents in the simulation
     """
 
-    def __init__(self, N):
+    def __init__(self):
         # Load the map dictionary. The dictionary maps the characters in the map file to the corresponding agent.
         dataDictionary = json.load(open("park_files/mapDictionary.json"))
 
@@ -56,9 +56,37 @@ class ParkModel(Model):
                         agent = Destination(f"d_{r*self.width+c}", self)
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
-        self.num_agents = N
+        self.spawn_bikes()
+
         self.running = True
 
     def step(self):
         """Advance the model by one step."""
+        # Spawn new bikes every 10 episodes
+        if self.schedule.steps % 10 == 0:
+            self.spawn_bikes()
+
         self.schedule.step()
+
+    def spawn_bikes(self):
+        """Spawn new bikes at the empty corners of the grid."""
+        corners = [
+            (0, 0),
+            (0, self.height),
+            (self.width, 0),
+            (self.width, self.height)
+        ]
+
+        for corner in corners:
+            clear = True
+            for agent in self.grid.iter_cell_list_contents([corner]):
+                if isInstance(agent, Bike):
+                    clear = False
+                    break
+
+            if  not clear:
+                break
+
+            new_bike = Bike(self.next_id(), self)
+            self.grid.place_agent(new_bike, corner)
+            self.schedule.add(new_bike)
