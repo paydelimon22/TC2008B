@@ -66,6 +66,10 @@ class ParkModel(Model):
         if self.schedule.steps % 10 == 0:
             self.spawn_bikes()
 
+        if len(self.agents_by_type["Bike"]) == len(self.agents_by_type["Road"]):
+            self.running = False
+            return
+
         self.schedule.step()
 
     def spawn_bikes(self):
