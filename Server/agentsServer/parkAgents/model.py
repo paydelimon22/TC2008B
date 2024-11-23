@@ -38,6 +38,33 @@ class ParkModel(Model):
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
                     elif col in ["S", "s"]:
+                        # Spawn road tile under traffic_light.
+                        if col == "S":
+                            for road in [lines[r - 1][c], lines[r + 1][c]]:
+                                if road in ["v", "^"]:
+                                    agent = Road(
+                                        f"r_{r*self.width+c}",
+                                        self,
+                                        dataDictionary[road]
+                                    )
+                                    self.grid.place_agent(
+                                        agent,
+                                        (c, self.height - r - 1)
+                                    )
+
+                        elif col == "s":
+                            for road in [lines[r][c - 1], lines[r][c + 1]]:
+                                if road in [">", "<"]:
+                                    agent = Road(
+                                        f"r_{r*self.width+c}",
+                                        self,
+                                        dataDictionary[road]
+                                    )
+                                    self.grid.place_agent(
+                                        agent,
+                                        (c, self.height - r - 1)
+                                    )
+
                         agent = Traffic_Light(
                             f"tl_{r*self.width+c}",
                             self,
@@ -53,6 +80,10 @@ class ParkModel(Model):
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
                     elif col == "D":
+                        # Spawn obstacle tile under destination.
+                        agent = Obstacle(f"ob_{r*self.width+c}", self)
+                        self.grid.place_agent(agent, (c, self.height - r - 1))
+
                         agent = Destination(f"d_{r*self.width+c}", self)
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
