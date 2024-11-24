@@ -9,9 +9,6 @@ from parkAgents.agent import Bike, Traffic_Light, Destination, Obstacle, Road
 import traceback
 
 # Size of the board:
-number_agents = 10
-width = 28
-height = 28
 parkModel = None
 currentStep = 0
 
@@ -22,26 +19,26 @@ cors = CORS(app, origins=["http://localhost"])
 
 # This route will be used to send the parameters of the simulation to the server.
 # The servers expects a POST request with the parameters in a.json.
-@app.route("/init", methods=["POST"])
+@app.route("/init", methods=["GET"])
 @cross_origin()
 def initModel():
-    global currentStep, parkModel, number_agents, width, height
+    global currentStep, parkModel
 
-    if request.method == "POST":
+    if request.method == "GET":
         try:
-            number_agents = int(request.json.get("NAgents"))
-            width = int(request.json.get("width"))
-            height = int(request.json.get("height"))
             currentStep = 0
 
-            print(request.json)
-            print(f"Model parameters:{number_agents, width, height}")
-
             # Create the model using the parameters sent by the application
-            parkModel = ParkModel(number_agents, width, height)
+            parkModel = ParkModel()
 
             # Return a message to saying that the model was created successfully
-            return jsonify({"message": "Parameters recieved, model initiated."})
+            return jsonify(
+                {
+                    "message": "Parameters recieved, model initiated.",
+                    "width": parkModel.width,
+                    "height": parkModel.height,
+                }
+            )
 
         except Exception as e:
             print(traceback.format_exc())

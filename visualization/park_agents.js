@@ -61,9 +61,8 @@ let frameCount = 0;
 
 // Define the data object
 const data = {
-  NAgents: 500,
-  width: 100,
-  height: 100
+  width: undefined,
+  height: undefined
 };
 
 // Main function to initialize and run the application
@@ -106,17 +105,15 @@ async function main() {
 async function initAgentsModel() {
   try {
     // Send a POST request to the agent server to initialize the model
-    let response = await fetch(agent_server_uri + "init", {
-      method: 'POST', 
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify(data)
-    })
+    let response = await fetch(agent_server_uri + "init")
 
     // Check if the response was successful
     if(response.ok){
       // Parse the response as JSON and log the message
       let result = await response.json()
       console.log(result.message)
+      data.width = response.width;
+      data.height = response.height;
     }
       
   } catch (error) {
