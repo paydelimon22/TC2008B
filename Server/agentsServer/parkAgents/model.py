@@ -98,7 +98,7 @@ class ParkModel(Model):
         if self.schedule.steps % 10 == 0:
             self.spawn_bikes()
 
-        if len(self.agents_by_type["Bike"]) == len(self.agents_by_type["Road"]):
+        if len(self.agents_by_type[Bike]) == len(self.agents_by_type[Road]):
             self.running = False
             return
 
@@ -116,7 +116,7 @@ class ParkModel(Model):
         for corner in corners:
             clear = True
             for agent in self.grid.iter_cell_list_contents([corner]):
-                if isInstance(agent, Bike):
+                if isinstance(agent, Bike):
                     clear = False
                     break
 
