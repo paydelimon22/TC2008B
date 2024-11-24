@@ -6,6 +6,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from parkAgents.model import ParkModel
 from parkAgents.agent import Bike, Traffic_Light, Destination, Obstacle, Road
+import traceback
 
 # Size of the board:
 number_agents = 10
@@ -43,6 +44,7 @@ def initModel():
             return jsonify({"message": "Parameters recieved, model initiated."})
 
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Erorr initializing the model"}), 500
 
@@ -66,6 +68,7 @@ def getAgents():
 
             return jsonify({"positions": agentPositions})
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error with the agent positions"}), 500
 
@@ -88,6 +91,7 @@ def getObstacles():
 
             return jsonify({"positions": carPositions})
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error with obstacle positions"}), 500
 
@@ -109,6 +113,7 @@ def updateModel():
                 }
             )
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error during step."}), 500
 
