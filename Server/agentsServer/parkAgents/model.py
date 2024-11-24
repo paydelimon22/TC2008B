@@ -14,6 +14,7 @@ class ParkModel(Model):
     """
 
     def __init__(self):
+        super().__init__(self)
         # Load the map dictionary. The dictionary maps the characters in the map file to the corresponding agent.
         dataDictionary = json.load(open("park_files/mapDictionary.json"))
 
