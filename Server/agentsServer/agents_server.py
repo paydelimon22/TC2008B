@@ -59,8 +59,8 @@ def getAgents():
         try:
             agentPositions = [
                 {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
-                for a, (x, z) in parkModel.grid.coord_iter()
-                if isinstance(a, Bike)
+                for agents, (x, z) in parkModel.grid.coord_iter()
+                for a in agents if isinstance(a, Bike)
             ]
 
             return jsonify({"positions": agentPositions})
@@ -82,8 +82,8 @@ def getObstacles():
             # Same as before, the positions are sent as a list of dictionaries, where each dictionary has the id and position of an obstacle.
             carPositions = [
                 {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
-                for a, (x, z) in parkModel.grid.coord_iter()
-                if isinstance(a, Obstacle)
+                for agents, (x, z) in parkModel.grid.coord_iter()
+                for a in agents if isinstance(a, Obstacle)
             ]
 
             return jsonify({"positions": carPositions})
