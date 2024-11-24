@@ -14,6 +14,7 @@ class ParkModel(Model):
     """
 
     def __init__(self):
+        super().__init__(self)
         # Load the map dictionary. The dictionary maps the characters in the map file to the corresponding agent.
         dataDictionary = json.load(open("park_files/mapDictionary.json"))
 
@@ -97,7 +98,7 @@ class ParkModel(Model):
         if self.schedule.steps % 10 == 0:
             self.spawn_bikes()
 
-        if len(self.agents_by_type["Bike"]) == len(self.agents_by_type["Road"]):
+        if len(self.agents_by_type[Bike]) == len(self.agents_by_type[Road]):
             self.running = False
             return
 
@@ -107,15 +108,15 @@ class ParkModel(Model):
         """Spawn new bikes at the empty corners of the grid."""
         corners = [
             (0, 0),
-            (0, self.height),
-            (self.width, 0),
-            (self.width, self.height)
+            (0, self.height - 1),
+            (self.width - 1, 0),
+            (self.width - 1, self.height - 1)
         ]
 
         for corner in corners:
             clear = True
             for agent in self.grid.iter_cell_list_contents([corner]):
-                if isInstance(agent, Bike):
+                if isinstance(agent, Bike):
                     clear = False
                     break
 
