@@ -22,7 +22,7 @@ class Bike(Agent):
         """
         Determines if the agent can move in the direction that was chosen
         """
-        self.model.grid.move_to_empty(self)
+        pass
 
     def step(self):
         """
