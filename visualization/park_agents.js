@@ -112,8 +112,8 @@ async function initAgentsModel() {
       // Parse the response as JSON and log the message
       let result = await response.json()
       console.log(result.message)
-      data.width = response.width;
-      data.height = response.height;
+      data.width = result.width;
+      data.height = result.height;
     }
 
   } catch (error) {
