@@ -50,60 +50,39 @@ import mtl_football_field from "./Decorators/Scalable/Football_Field/football_fi
 import obj_fountain from "./Decorators/Scalable/Fountain/fountain.obj?raw";
 import mtl_fountain from "./Decorators/Scalable/Fountain/fountain.mtl?raw";
 
-let assets = {
-    basketball_court: {data: [parse_obj(obj_basketball_court, mtl_basketball_court)]},
-    bike: {data: [parse_obj(obj_bike_frame, mtl_bike_frame)]},
-    destination: {data: [parse_obj(obj_destination, mtl_destination)]},
-    football_field: {data: [parse_obj(obj_football_field, mtl_football_field)]},
-    fountain: {data: [parse_obj(obj_fountain, mtl_fountain)]},
-    grass: {data: [parse_obj(obj_grass, mtl_grass)]},
-    rock1: {data: [parse_obj(obj_rock1, mtl_rock)]},
-    rock2: {data: [parse_obj(obj_rock2, mtl_rock)]},
-    road: {data: [parse_obj(obj_road, mtl_road)]},
-    traffic_light: {data: [parse_obj(obj_traffic_light, mtl_traffic_light)]},
-    trash_can: {data: [parse_obj(obj_trash_can, mtl_trash_can)]},
-    tree1: {data: [parse_obj(obj_tree1, mtl_tree)]},
-    tree2: {data: [parse_obj(obj_tree2, mtl_tree)]},
-    wheel: {data: [parse_obj(obj_bike_wheel, mtl_bike_wheel)]},
+let assets_arrays = {
+    // ##### Bike arrays ######
+    // ----- Frame array ------
+    bike_frame: parse_obj(obj_bike_frame, mtl_bike_frame),
+    // ----- Wheel array ------
+    bike_wheel: parse_obj(obj_bike_wheel, mtl_bike_wheel),
+    // ##### Tiles arrays ######
+    // ----- Grass array ------
+    grass: parse_obj(obj_grass, mtl_grass),
+    // ----- Road array -----
+    road: parse_obj(obj_road, mtl_road),
+    // ##### Road array ######
+    destination: parse_obj(obj_destination, mtl_destination),
+    // ##### Traffic light array #####
+    traffic_light: parse_obj(obj_traffic_light, mtl_traffic_light),
+    // ##### Decorators arrays #####
+    // ===== Tile decorators =====
+    // ----- Tree arrays -----
+    tree1: parse_obj(obj_tree1, mtl_tree),
+    tree2: parse_obj(obj_tree2, mtl_tree),
+    // ----- Rock arrays -----
+    rock1: parse_obj(obj_rock1, mtl_rock),
+    rock2: parse_obj(obj_rock2, mtl_rock),
+    // ----- Trash can array -----
+    trash_can: parse_obj(obj_trash_can, mtl_trash_can),
+    // ====== Scalable decorators =====
+    // ------ Basketball Court array -----
+    basketball_court: parse_obj(obj_basketball_court, mtl_basketball_court),
+    // ------ Football Field array -----
+    football_field: parse_obj(obj_football_field, mtl_football_field),
+    // ------ Fountain array -----
+    fountain: parse_obj(obj_fountain, mtl_fountain),
 };
-
-export default function get_object_arrays(object) {
-    let arrays;
-    switch (object) {
-        case "bike":
-            arrays = assets.bike.data[0]
-            console.log("BIKE: ", arrays);
-            return arrays;
-        case "basketball_court":
-            return assets.basketball_court.data;
-        case "destination":
-            return assets.destination.data;
-        case "football_field":
-            return assets.football_field.data;
-        case "fountain":
-            return assets.fountain.data;
-        case "grass":
-            return assets.grass.data;
-        case "rock1":
-            return assets.rock1.data;
-        case "rock2":
-            return assets.rock2.data;
-        case "road":
-            return assets.road.data;
-        case "traffic_light":
-            return assets.traffic_light.data;
-        case "trash_can":
-            return assets.trash_can.data;
-        case "tree1":
-            return assets.tree1.data;
-        case "tree2":
-            return assets.tree2.data;
-        case "wheel":
-            return assets.wheel.data;
-        default:
-            return null; 
-    }
-}
 
 function parse_obj(object, mtl_file) {
     const myobject = {
@@ -205,3 +184,5 @@ function parse_mtllib(mtl_file) {
     }
     return materials;
 }
+
+export default assets_arrays;
