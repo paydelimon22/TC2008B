@@ -2,37 +2,57 @@
 Module used to generate a dictionary with all the assets necessary as an array for  WebGL to interpret
 */
 
-import obj_basketball_court from "./assets/Obstacles/basketball_court.obj?raw";
-import obj_bike from "./assets/Bike/bike.obj?raw";
-import obj_destination from "./assets/destination.obj?raw";
-import obj_football_field from "./assets/Obstacles/football_field.obj?raw";
-import obj_fountain from "./assets/Obstacles/fountain.obj?raw";
-import obj_grass from "./assets/grass.obj?raw";
-import obj_rock1 from "./assets/Obstacles/rock1.obj?raw";
-import obj_rock2 from "./assets/Obstacles/rock2.obj?raw";
-import obj_road from "./assets/road.obj?raw";
-import obj_traffic_light from "./assets/traffic_light.obj?raw";
-import obj_trash_can from "./assets/Obstacles/trash_can.obj?raw";
-import obj_tree1 from "./assets/Obstacles/tree1.obj?raw";
-import obj_tree2 from "./assets/Obstacles/tree2.obj?raw";
-import obj_wheel from "./assets/Bike/wheel.obj?raw";
+// ###### Import Bike models and materials #####
+// ------ Bike Frame -----
+import obj_bike_frame from "./Bike/Bike_Frame/bike_frame.obj?raw";
+import mtl_bike_frame from "./Bike/Bike_Frame/bike_frame.mtl?raw";
+// ----- Bike Wheel -----
+import obj_bike_wheel from "./Bike/Bike_Wheel/bike_wheel.obj?raw";
+import mtl_bike_wheel from "./Bike/Bike_Wheel/bike_wheel.mtl?raw";
 
-import mtl_basketball_court from "./assets/Obstacles/basketball_court.mtl?raw";
-import mtl_bike from "./assets/Bike/bike.mtl?raw";
-import mtl_destination from "./assets/destination.mtl?raw";
-import mtl_football_field from "./assets/Obstacles/football_field.mtl?raw";
-import mtl_fountain from "./assets/Obstacles/fountain.mtl?raw";
-import mtl_grass from "./assets/grass.mtl?raw";
-import mtl_rock from  "./assets/Obstacles/rock.mtl?raw";
-import mtl_road from "./assets/road.mtl?raw";
-import mtl_traffic_light from "./assets/traffic_light.mtl?raw";
-import mtl_trash_can from "./assets/Obstacles/trash_can.mtl?raw";
-import mtl_tree from "./assets/Obstacles/tree.mtl?raw";
-import mtl_wheel from "./assets/Bike/wheel.mtl?raw";
+// ##### Tiles objects and materials #####
+// ----- Grass -----
+import obj_grass from "./Tiles/Grass/grass.obj?raw";
+import mtl_grass from "./Tiles/Grass/grass.mtl?raw";
+// ----- Road -----
+import obj_road from "./Tiles/Road/road.obj?raw";
+import mtl_road from "./Tiles/Road/road.mtl?raw";
+
+// ##### Import the destination model and material #####
+import obj_destination from "./Destination/destination.obj?raw";
+import mtl_destination from "./Destination/destination.mtl?raw";
+
+// ##### Traffic Lights object and material #####
+import obj_traffic_light from "./Traffic_Light/traffic_light.obj?raw";
+import mtl_traffic_light from "./Traffic_Light/traffic_light.mtl?raw";
+
+// ##### Import the decorators #####
+//  ===== Tile decorators =====
+//  ----- Trees -----
+import obj_tree1 from "./Decorators/Tile/Tree/tree1.obj?raw";
+import obj_tree2 from "./Decorators/Tile/Tree/tree2.obj?raw";
+import mtl_tree from "./Decorators/Tile/Tree/tree.mtl?raw";
+//  ----- Rocks -----
+import obj_rock1 from "./Decorators/Tile/Rock/rock1.obj?raw";
+import obj_rock2 from "./Decorators/Tile/Rock/rock2.obj?raw";
+import mtl_rock from  "./Decorators/Tile/Rock/rock.mtl?raw";
+//  ----- Trash Cans -----
+import obj_trash_can from "./Decorators/Tile/Trash_Can/trash_can.obj?raw";
+import mtl_trash_can from "./Decorators/Tile/Trash_Can/trash_can.mtl?raw";
+// ===== Scalable decorators =====
+// ----- Basketball Court -----
+import obj_basketball_court from "./Decorators/Scalable/Basketball_Court/basketball_court.obj?raw";
+import mtl_basketball_court from "./Decorators/Scalable/Basketball_Court/basketball_court.mtl?raw";
+// ----- Football Field -----
+import obj_football_field from "./Decorators/Scalable/Football_Field/football_field.obj?raw";
+import mtl_football_field from "./Decorators/Scalable/Football_Field/football_field.mtl?raw";
+//  ----- Fountain -----
+import obj_fountain from "./Decorators/Scalable/Fountain/fountain.obj?raw";
+import mtl_fountain from "./Decorators/Scalable/Fountain/fountain.mtl?raw";
 
 let assets = {
     basketball_court: {data: [parse_obj(obj_basketball_court, mtl_basketball_court)]},
-    bike: {data: [parse_obj(obj_bike, mtl_bike)]},
+    bike: {data: [parse_obj(obj_bike_frame, mtl_bike_frame)]},
     destination: {data: [parse_obj(obj_destination, mtl_destination)]},
     football_field: {data: [parse_obj(obj_football_field, mtl_football_field)]},
     fountain: {data: [parse_obj(obj_fountain, mtl_fountain)]},
@@ -44,7 +64,7 @@ let assets = {
     trash_can: {data: [parse_obj(obj_trash_can, mtl_trash_can)]},
     tree1: {data: [parse_obj(obj_tree1, mtl_tree)]},
     tree2: {data: [parse_obj(obj_tree2, mtl_tree)]},
-    wheel: {data: [parse_obj(obj_wheel, mtl_wheel)]},
+    wheel: {data: [parse_obj(obj_bike_wheel, mtl_bike_wheel)]},
 };
 
 export default function get_object_arrays(object) {
