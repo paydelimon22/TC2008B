@@ -115,10 +115,10 @@ async function initAgentsModel() {
       data.width = response.width;
       data.height = response.height;
     }
-      
+
   } catch (error) {
     // Log any errors that occur during the request
-    console.log(error)    
+    console.log(error)
   }
 }
 
@@ -128,7 +128,7 @@ async function initAgentsModel() {
 async function getAgents() {
   try {
     // Send a GET request to the agent server to retrieve the agent positions
-    let response = await fetch(agent_server_uri + "getAgents") 
+    let response = await fetch(agent_server_uri + "getAgents")
 
     // Check if the response was successful
     if(response.ok){
@@ -164,7 +164,7 @@ async function getAgents() {
 
   } catch (error) {
     // Log any errors that occur during the request
-    console.log(error) 
+    console.log(error)
   }
 }
 
@@ -174,7 +174,7 @@ async function getAgents() {
 async function getObstacles() {
   try {
     // Send a GET request to the agent server to retrieve the obstacle positions
-    let response = await fetch(agent_server_uri + "getObstacles") 
+    let response = await fetch(agent_server_uri + "getObstacles")
 
     // Check if the response was successful
     if(response.ok){
@@ -192,7 +192,7 @@ async function getObstacles() {
 
   } catch (error) {
     // Log any errors that occur during the request
-    console.log(error) 
+    console.log(error)
   }
 }
 
@@ -202,7 +202,7 @@ async function getObstacles() {
 async function update() {
   try {
     // Send a request to the agent server to update the agent positions
-    let response = await fetch(agent_server_uri + "update") 
+    let response = await fetch(agent_server_uri + "update")
 
     // Check if the response was successful
     if(response.ok){
@@ -214,13 +214,13 @@ async function update() {
 
   } catch (error) {
     // Log any errors that occur during the request
-    console.log(error) 
+    console.log(error)
   }
 }
 
 /*
  * Draws the scene by rendering the agents and obstacles.
- * 
+ *
  * @param {WebGLRenderingContext} gl - The WebGL rendering context.
  * @param {Object} programInfo - The program information.
  * @param {WebGLVertexArrayObject} agentsVao - The vertex array object for agents.
@@ -252,7 +252,7 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
     const distance = 1
 
     // Draw the agents
-    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)    
+    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
     // Draw the obstacles
     drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix)
 
@@ -263,7 +263,7 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
     if(frameCount%30 == 0){
       frameCount = 0
       await update()
-    } 
+    }
 
     // Request the next frame
     requestAnimationFrame(()=>drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo))
@@ -271,7 +271,7 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
 
 /*
  * Draws the agents.
- * 
+ *
  * @param {Number} distance - The distance for rendering.
  * @param {WebGLVertexArrayObject} agentsVao - The vertex array object for agents.
  * @param {Object} agentsBufferInfo - The buffer information for agents.
@@ -303,14 +303,14 @@ function drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
       // Set the uniforms and draw the agent
       twgl.setUniforms(programInfo, uniforms);
       twgl.drawBufferInfo(gl, agentsBufferInfo);
-      
+
     }
 }
 
-      
+
 /*
  * Draws the obstacles.
- * 
+ *
  * @param {Number} distance - The distance for rendering.
  * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
  * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
@@ -341,13 +341,13 @@ function drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjecti
       // Set the uniforms and draw the obstacle
       twgl.setUniforms(programInfo, uniforms);
       twgl.drawBufferInfo(gl, obstaclesBufferInfo);
-      
+
     }
 }
 
 /*
  * Sets up the world view by creating the view-projection matrix.
- * 
+ *
  * @param {WebGLRenderingContext} gl - The WebGL rendering context.
  * @returns {Float32Array} The view-projection matrix.
  */
