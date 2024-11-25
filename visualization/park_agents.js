@@ -4,33 +4,10 @@ import * as twgl from 'twgl.js';
 import GUI from 'lil-gui';
 
 // Define the vertex shader code, using GLSL 3.00
-const vsGLSL = `#version 300 es
-in vec4 a_position;
-in vec4 a_color;
-
-uniform mat4 u_transforms;
-uniform mat4 u_matrix;
-
-out vec4 v_color;
-
-void main() {
-gl_Position = u_matrix * a_position;
-v_color = a_color;
-}
-`;
+import vsGLSL from "./shaders/vs_phong.glsl?raw";
 
 // Define the fragment shader code, using GLSL 3.00
-const fsGLSL = `#version 300 es
-precision highp float;
-
-in vec4 v_color;
-
-out vec4 outColor;
-
-void main() {
-outColor = v_color;
-}
-`;
+import fsGLSL from "./shaders/fs_phong.glsl?raw";
 
 // Define the Object3D class to represent 3D objects
 class Object3D {
