@@ -8,9 +8,6 @@ import json
 class ParkModel(Model):
     """
     Creates a model based on a park map.
-
-    Args:
-        N: Number of agents in the simulation
     """
 
     def __init__(self):

@@ -6,11 +6,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 from parkAgents.model import ParkModel
 from parkAgents.agent import Bike, Traffic_Light, Destination, Obstacle, Road
+import traceback
 
 # Size of the board:
-number_agents = 10
-width = 28
-height = 28
 parkModel = None
 currentStep = 0
 
@@ -21,28 +19,29 @@ cors = CORS(app, origins=["http://localhost"])
 
 # This route will be used to send the parameters of the simulation to the server.
 # The servers expects a POST request with the parameters in a.json.
-@app.route("/init", methods=["POST"])
+@app.route("/init", methods=["GET"])
 @cross_origin()
 def initModel():
-    global currentStep, parkModel, number_agents, width, height
+    global currentStep, parkModel
 
-    if request.method == "POST":
+    if request.method == "GET":
         try:
-            number_agents = int(request.json.get("NAgents"))
-            width = int(request.json.get("width"))
-            height = int(request.json.get("height"))
             currentStep = 0
 
-            print(request.json)
-            print(f"Model parameters:{number_agents, width, height}")
-
             # Create the model using the parameters sent by the application
-            parkModel = ParkModel(number_agents, width, height)
+            parkModel = ParkModel()
 
             # Return a message to saying that the model was created successfully
-            return jsonify({"message": "Parameters recieved, model initiated."})
+            return jsonify(
+                {
+                    "message": "Parameters recieved, model initiated.",
+                    "width": parkModel.width,
+                    "height": parkModel.height,
+                }
+            )
 
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Erorr initializing the model"}), 500
 
@@ -60,12 +59,13 @@ def getAgents():
         try:
             agentPositions = [
                 {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
-                for a, (x, z) in parkModel.grid.coord_iter()
-                if isinstance(a, Bike)
+                for agents, (x, z) in parkModel.grid.coord_iter()
+                for a in agents if isinstance(a, Bike)
             ]
 
             return jsonify({"positions": agentPositions})
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error with the agent positions"}), 500
 
@@ -82,12 +82,13 @@ def getObstacles():
             # Same as before, the positions are sent as a list of dictionaries, where each dictionary has the id and position of an obstacle.
             carPositions = [
                 {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
-                for a, (x, z) in parkModel.grid.coord_iter()
-                if isinstance(a, Obstacle)
+                for agents, (x, z) in parkModel.grid.coord_iter()
+                for a in agents if isinstance(a, Obstacle)
             ]
 
             return jsonify({"positions": carPositions})
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error with obstacle positions"}), 500
 
@@ -109,6 +110,7 @@ def updateModel():
                 }
             )
         except Exception as e:
+            print(traceback.format_exc())
             print(e)
             return jsonify({"message": "Error during step."}), 500
 
