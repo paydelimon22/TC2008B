@@ -33,8 +33,32 @@ const obstacles = [];
 // Initialize WebGL-related variables
 let gl, programInfo, agentArrays, obstacleArrays, agentsBufferInfo, obstaclesBufferInfo, agentsVao, obstaclesVao;
 
-// Define the camera position
-let cameraPosition = {x:0, y:9, z:9};
+// General visualization settings
+const settings = {
+    // Speed in degrees
+    rotationSpeed: {
+        x: 0,
+        y: 30,
+        z: 0,
+    },
+    cameraPosition: {
+        x: 0,
+        y: 9,
+        z: 9,
+    },
+    light: {
+        position: {
+            x: 0,
+            y: 50,
+            z: 0,
+        },
+        color: {
+            ambient: [0.5, 0.5, 0.5, 1.0],
+            diffuse: [0.5, 0.5, 0.5, 1.0],
+            specular: [0.5, 0.5, 0.5, 1.0],
+        },
+    },
+};
 
 // Initialize the frame count
 let frameCount = 0;
@@ -233,6 +257,28 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
     // Set the distance for rendering
     const distance = 1
 
+    // Global uniforms
+    const v3_lightPosition = twgl.v3.create(
+        settings.light.position.x,
+        settings.light.position.y,
+        settings.light.position.z,
+    );
+    const v3_cameraPosition = twgl.v3.create(
+        settings.cameraPosition.x,
+        settings.cameraPosition.y,
+        settings.cameraPosition.z,
+    );
+
+    const globalUniforms = {
+        u_viewWorldPosition: v3_cameraPosition,
+        u_lightWorldPosition: v3_lightPosition,
+        u_ambientLight: settings.light.color.ambient,
+        u_diffuseLight: settings.light.color.diffuse,
+        u_specularLight: settings.light.color.specular,
+    };
+
+    twgl.setUniforms(programInfo, globalUniforms);
+
     // Draw the agents
     drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
     // Draw the obstacles
@@ -266,25 +312,31 @@ function drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
     // Iterate over the agents
     for(const agent of agents){
 
-      // Create the agent's transformation matrix
-      const cube_trans = twgl.v3.create(...agent.position);
-      const cube_scale = twgl.v3.create(...agent.scale);
+        // Create the agent's transformation matrix
+        const agent_trans = twgl.v3.create(...agent.position);
+        const agent_scale = twgl.v3.create(...agent.scale.map(x => 0.4 * x));
 
-      // Calculate the agent's matrix
-      agent.matrix = twgl.m4.translate(viewProjectionMatrix, cube_trans);
-      agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
-      agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
-      agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
-      agent.matrix = twgl.m4.scale(agent.matrix, cube_scale);
+        // Calculate the agent's matrix
+        agent.matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
+        agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
+        agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
+        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
+        agent.matrix = twgl.m4.scale(agent.matrix, agent_scale);
 
-      // Set the uniforms for the agent
-      let uniforms = {
-          u_matrix: agent.matrix,
-      }
+        const agent_worldViewProjection = twgl.m4.multiply(
+            viewProjectionMatrix, agent.matrix
+        );
 
-      // Set the uniforms and draw the agent
-      twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(gl, agentsBufferInfo);
+        // Set the uniforms for the agent
+        let uniforms = {
+            u_world: agent.matrix,
+            u_worldInverseTransform: twgl.m4.identity(),
+            u_worldViewProjection: agent_worldViewProjection,
+        }
+
+        // Set the uniforms and draw the agent
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, agentsBufferInfo);
 
     }
 }
@@ -304,25 +356,31 @@ function drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjecti
 
     // Iterate over the obstacles
     for(const obstacle of obstacles){
-      // Create the obstacle's transformation matrix
-      const cube_trans = twgl.v3.create(...obstacle.position);
-      const cube_scale = twgl.v3.create(...obstacle.scale);
+        // Create the obstacle's transformation matrix
+        const obstacle_trans = twgl.v3.create(...obstacle.position);
+        const obstacle_scale = twgl.v3.create(...obstacle.scale.map(x => 0.4 * x));
 
-      // Calculate the obstacle's matrix
-      obstacle.matrix = twgl.m4.translate(viewProjectionMatrix, cube_trans);
-      obstacle.matrix = twgl.m4.rotateX(obstacle.matrix, obstacle.rotation[0]);
-      obstacle.matrix = twgl.m4.rotateY(obstacle.matrix, obstacle.rotation[1]);
-      obstacle.matrix = twgl.m4.rotateZ(obstacle.matrix, obstacle.rotation[2]);
-      obstacle.matrix = twgl.m4.scale(obstacle.matrix, cube_scale);
+        // Calculate the obstacle's matrix
+        obstacle.matrix = twgl.m4.translate(twgl.m4.identity(), obstacle_trans);
+        obstacle.matrix = twgl.m4.rotateX(obstacle.matrix, obstacle.rotation[0]);
+        obstacle.matrix = twgl.m4.rotateY(obstacle.matrix, obstacle.rotation[1]);
+        obstacle.matrix = twgl.m4.rotateZ(obstacle.matrix, obstacle.rotation[2]);
+        obstacle.matrix = twgl.m4.scale(obstacle.matrix, obstacle_scale);
 
-      // Set the uniforms for the obstacle
-      let uniforms = {
-          u_matrix: obstacle.matrix,
-      }
+        const obstacle_worldViewProjection = twgl.m4.multiply(
+            viewProjectionMatrix, obstacle.matrix
+        );
 
-      // Set the uniforms and draw the obstacle
-      twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(gl, obstaclesBufferInfo);
+        // Set the uniforms for the obstacle
+        let uniforms = {
+            u_world: obstacle.matrix,
+            u_worldInverseTransform: twgl.m4.identity(),
+            u_worldViewProjection: obstacle_worldViewProjection,
+        }
+
+        // Set the uniforms and draw the obstacle
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, obstaclesBufferInfo);
 
     }
 }
