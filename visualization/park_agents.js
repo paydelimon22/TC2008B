@@ -173,7 +173,7 @@ async function getAgents() {
                     const current_agent = agents.find(
                         (object3d) => object3d.id == agent.id
                     );
-    
+
                     // Check if the agent exists in the agents array
                     if(current_agent != undefined){
                         // Update the agent's position
@@ -328,14 +328,16 @@ async function drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL) {
 function drawAgents(
     distance, agent_WebGL, viewProjectionMatrix
 ) {
-    // Bind the vertex array object for agents
-    gl.bindVertexArray(agent_WebGL.frame.vao);
-
     // Iterate over the agents
     for (const agent of agents) {
+        // Draw the bike frame
+        // Bind the vertex array object for bike_frame
+        gl.bindVertexArray(agent_WebGL.frame.vao);
 
         // Create the agent's transformation matrix
-        const agent_trans = twgl.v3.create(...agent.position);
+        const agent_trans = twgl.v3.add(
+            twgl.v3.create(...agent.position), twgl.v3.create(0, 0.25, 0)
+        );
         const agent_scale = twgl.v3.create(...agent.scale.map(x => 0.4 * x));
 
         // Calculate the agent's matrix
@@ -349,7 +351,7 @@ function drawAgents(
             viewProjectionMatrix, agent.matrix
         );
 
-        // Set the uniforms for the agent
+        // Set the uniforms for the agent bike_frame
         let uniforms = {
             u_world: agent.matrix,
             u_worldInverseTransform: twgl.m4.identity(),
@@ -360,6 +362,38 @@ function drawAgents(
         twgl.setUniforms(programInfo, uniforms);
         twgl.drawBufferInfo(gl, agent_WebGL.frame.buffer_info);
 
+        // Draw the wheels
+        // Bind the vertex array object for bike_wheel
+        gl.bindVertexArray(agent_WebGL.wheel.vao);
+
+        for (let i = 0; i < 2; i++) {
+            // Front wheel transformations
+            let wheel_trans = twgl.v3.create(0, 0, 0.5);
+            if (i == 1) {
+                wheel_trans = twgl.v3.negate(wheel_trans);
+            };
+            let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
+            wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
+            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
+            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent.rotation[1]);
+            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
+            wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
+
+            // Front wheel
+            const wheel_worldViewProjection = twgl.m4.multiply(
+                viewProjectionMatrix, wheel_matrix
+            );
+
+            let wheel_uniforms = {
+                u_world: wheel_matrix,
+                u_worldInverseTransform: twgl.m4.identity(),
+                u_worldViewProjection: wheel_worldViewProjection,
+            };
+
+            // Set the uniforms and draw the agent
+            twgl.setUniforms(programInfo, wheel_uniforms);
+            twgl.drawBufferInfo(gl, agent_WebGL.wheel.buffer_info);
+        }
     }
 }
 
