@@ -23,6 +23,18 @@ class Object3D {
     }
 }
 
+class WebGLObject {
+    constructor(arrays) {
+        this.arrays = arrays;
+        this.buffer_info = twgl.createBufferInfoFromArrays(
+            gl, this.arrays
+        );
+        this.vao = twgl.createVAOFromBufferInfo(
+            gl, programInfo, this.buffer_info
+        );
+    }
+}
+
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
 
@@ -32,9 +44,6 @@ const obstacles = [];
 
 // Initialize WebGL-related variables
 let gl, programInfo;
-let agentArrays, obstacleArrays;
-let agentsBufferInfo, obstaclesBufferInfo;
-let agentsVao, obstaclesVao;
 
 // General visualization settings
 const settings = {
@@ -80,23 +89,20 @@ async function main() {
     // Create the program information using the vertex and fragment shaders
     programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
 
-    // Generate the agent and obstacle data
-    agentArrays = assets_arrays.bike_frame;
-    console.log("Agent arrays:", agentArrays);
-    obstacleArrays = assets_arrays.grass;
-    console.log("Obstacle arrays:", obstacleArrays);
-
-    // Create buffer information from the agent and obstacle data
-    agentsBufferInfo = twgl.createBufferInfoFromArrays(gl, agentArrays);
-    obstaclesBufferInfo = twgl.createBufferInfoFromArrays(gl, obstacleArrays);
-
-    // Create vertex array objects (VAOs) from the buffer information
-    agentsVao = twgl.createVAOFromBufferInfo(
-        gl, programInfo, agentsBufferInfo
-    );
-    obstaclesVao = twgl.createVAOFromBufferInfo(
-        gl, programInfo, obstaclesBufferInfo
-    );
+    let bike_agent = {
+        frame: new WebGLObject(assets_arrays.bike_frame),
+        wheel: new WebGLObject(assets_arrays.bike_wheel),
+    };
+    let tiles = {
+        grass: new WebGLObject(assets_arrays.grass),
+        road: new WebGLObject(assets_arrays.road),
+    };
+    let decorators = {
+        tile: {
+            tree1: new WebGLObject(assets_arrays.tree1),
+            tree2: new WebGLObject(assets_arrays.tree2),
+        },
+    };
 
     // Set up the user interface
     setupUI();
@@ -109,11 +115,7 @@ async function main() {
     await getObstacles();
 
     // Draw the scene
-    await drawScene(
-        gl, programInfo,
-        agentsVao, agentsBufferInfo,
-        obstaclesVao, obstaclesBufferInfo
-    );
+    await drawScene(gl, programInfo, bike_agent, tiles.grass);
 }
 
 /*
@@ -248,11 +250,7 @@ async function update() {
  * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
  * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
  */
-async function drawScene(
-    gl, programInfo,
-    agentsVao, agentsBufferInfo,
-    obstaclesVao, obstaclesBufferInfo
-) {
+async function drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL) {
     // Resize the canvas to match the display size
     twgl.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -298,10 +296,10 @@ async function drawScene(
     twgl.setUniforms(programInfo, globalUniforms);
 
     // Draw the agents
-    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix);
+    drawAgents(distance, agent_WebGL, viewProjectionMatrix);
     // Draw the obstacles
     drawObstacles(
-        distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix
+        distance, obstacle_WebGL, viewProjectionMatrix
     );
 
     // Increment the frame count
@@ -315,11 +313,7 @@ async function drawScene(
 
     // Request the next frame
     requestAnimationFrame(
-        () => drawScene(
-            gl, programInfo,
-            agentsVao, agentsBufferInfo,
-            obstaclesVao, obstaclesBufferInfo
-        )
+        () => drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL)
     );
 }
 
@@ -332,13 +326,13 @@ async function drawScene(
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
 function drawAgents(
-    distance, agentsVao, agentsBufferInfo, viewProjectionMatrix
+    distance, agent_WebGL, viewProjectionMatrix
 ) {
     // Bind the vertex array object for agents
-    gl.bindVertexArray(agentsVao);
+    gl.bindVertexArray(agent_WebGL.frame.vao);
 
     // Iterate over the agents
-    for(const agent of agents){
+    for (const agent of agents) {
 
         // Create the agent's transformation matrix
         const agent_trans = twgl.v3.create(...agent.position);
@@ -364,7 +358,7 @@ function drawAgents(
 
         // Set the uniforms and draw the agent
         twgl.setUniforms(programInfo, uniforms);
-        twgl.drawBufferInfo(gl, agentsBufferInfo);
+        twgl.drawBufferInfo(gl, agent_WebGL.frame.buffer_info);
 
     }
 }
@@ -379,10 +373,10 @@ function drawAgents(
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
 function drawObstacles(
-    distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix
+    distance, obstacle_WebGL, viewProjectionMatrix
 ) {
     // Bind the vertex array object for obstacles
-    gl.bindVertexArray(obstaclesVao);
+    gl.bindVertexArray(obstacle_WebGL.vao);
 
     // Iterate over the obstacles
     for(const obstacle of obstacles){
@@ -420,7 +414,7 @@ function drawObstacles(
 
         // Set the uniforms and draw the obstacle
         twgl.setUniforms(programInfo, uniforms);
-        twgl.drawBufferInfo(gl, obstaclesBufferInfo);
+        twgl.drawBufferInfo(gl, obstacle_WebGL.buffer_info);
 
     }
 }
