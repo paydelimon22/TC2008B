@@ -3,11 +3,14 @@
 import * as twgl from 'twgl.js';
 import GUI from 'lil-gui';
 
-// Define the vertex shader code, using GLSL 3.00
+// Import the vertex shader code, using GLSL 3.00
 import vsGLSL from "./shaders/vs_phong.glsl?raw";
 
-// Define the fragment shader code, using GLSL 3.00
+// Import the fragment shader code, using GLSL 3.00
 import fsGLSL from "./shaders/fs_phong.glsl?raw";
+
+// Import the asset arrays from loader module.
+import assets_arrays from "./assets/load_obj";
 
 // Define the Object3D class to represent 3D objects
 class Object3D {
@@ -51,8 +54,10 @@ async function main() {
   programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
 
   // Generate the agent and obstacle data
-  agentArrays = generateData(1);
-  obstacleArrays = generateObstacleData(1);
+  agentArrays = assets_arrays.bike_frame;
+  console.log("Agent arrays:", agentArrays);
+  obstacleArrays = assets_arrays.grass;
+  console.log("Obstacle arrays:", obstacleArrays);
 
   // Create buffer information from the agent and obstacle data
   agentsBufferInfo = twgl.createBufferInfoFromArrays(gl, agentArrays);
@@ -371,213 +376,25 @@ function setupUI() {
     const posFolder = gui.addFolder('Position:')
 
     // Add a slider for the x-axis
-    posFolder.add(cameraPosition, 'x', -50, 50)
+    posFolder.add(settings.cameraPosition, 'x', -50, 50)
         .onChange( value => {
             // Update the camera position when the slider value changes
-            cameraPosition.x = value
+            settings.cameraPosition.x = value
         });
 
     // Add a slider for the y-axis
-    posFolder.add( cameraPosition, 'y', -50, 50)
+    posFolder.add( settings.cameraPosition, 'y', -50, 50)
         .onChange( value => {
             // Update the camera position when the slider value changes
-            cameraPosition.y = value
+            settings.cameraPosition.y = value
         });
 
     // Add a slider for the z-axis
-    posFolder.add( cameraPosition, 'z', -50, 50)
+    posFolder.add( settings.cameraPosition, 'z', -50, 50)
         .onChange( value => {
             // Update the camera position when the slider value changes
-            cameraPosition.z = value
+            settings.cameraPosition.z = value
         });
-}
-
-function generateData(size) {
-    let arrays =
-    {
-        a_position: {
-                numComponents: 3,
-                data: [
-                  // Front Face
-                  -0.5, -0.5,  0.5,
-                  0.5, -0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-
-                 // Back face
-                 -0.5, -0.5, -0.5,
-                 -0.5,  0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5, -0.5, -0.5,
-
-                 // Top face
-                 -0.5,  0.5, -0.5,
-                 -0.5,  0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                  0.5,  0.5, -0.5,
-
-                 // Bottom face
-                 -0.5, -0.5, -0.5,
-                  0.5, -0.5, -0.5,
-                  0.5, -0.5,  0.5,
-                 -0.5, -0.5,  0.5,
-
-                 // Right face
-                  0.5, -0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5,  0.5,  0.5,
-                  0.5, -0.5,  0.5,
-
-                 // Left face
-                 -0.5, -0.5, -0.5,
-                 -0.5, -0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-                 -0.5,  0.5, -0.5
-                ].map(e => size * e)
-            },
-        a_color: {
-                numComponents: 4,
-                data: [
-                  // Front face
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                  // Back Face
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                  // Top Face
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                  // Bottom Face
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                  // Right Face
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                  // Left Face
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                ]
-            },
-        indices: {
-                numComponents: 3,
-                data: [
-                  0, 1, 2,      0, 2, 3,    // Front face
-                  4, 5, 6,      4, 6, 7,    // Back face
-                  8, 9, 10,     8, 10, 11,  // Top face
-                  12, 13, 14,   12, 14, 15, // Bottom face
-                  16, 17, 18,   16, 18, 19, // Right face
-                  20, 21, 22,   20, 22, 23  // Left face
-                ]
-            }
-    };
-
-    return arrays;
-}
-
-function generateObstacleData(size){
-
-    let arrays =
-    {
-        a_position: {
-                numComponents: 3,
-                data: [
-                  // Front Face
-                  -0.5, -0.5,  0.5,
-                  0.5, -0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-
-                 // Back face
-                 -0.5, -0.5, -0.5,
-                 -0.5,  0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5, -0.5, -0.5,
-
-                 // Top face
-                 -0.5,  0.5, -0.5,
-                 -0.5,  0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                  0.5,  0.5, -0.5,
-
-                 // Bottom face
-                 -0.5, -0.5, -0.5,
-                  0.5, -0.5, -0.5,
-                  0.5, -0.5,  0.5,
-                 -0.5, -0.5,  0.5,
-
-                 // Right face
-                  0.5, -0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5,  0.5,  0.5,
-                  0.5, -0.5,  0.5,
-
-                 // Left face
-                 -0.5, -0.5, -0.5,
-                 -0.5, -0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-                 -0.5,  0.5, -0.5
-                ].map(e => size * e)
-            },
-        a_color: {
-                numComponents: 4,
-                data: [
-                  // Front face
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                  // Back Face
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                  // Top Face
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                  // Bottom Face
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                  // Right Face
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                  // Left Face
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                ]
-            },
-        indices: {
-                numComponents: 3,
-                data: [
-                  0, 1, 2,      0, 2, 3,    // Front face
-                  4, 5, 6,      4, 6, 7,    // Back face
-                  8, 9, 10,     8, 10, 11,  // Top face
-                  12, 13, 14,   12, 14, 15, // Bottom face
-                  16, 17, 18,   16, 18, 19, // Right face
-                  20, 21, 22,   20, 22, 23  // Left face
-                ]
-            }
-    };
-    return arrays;
 }
 
 main()
