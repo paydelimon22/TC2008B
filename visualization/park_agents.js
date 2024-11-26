@@ -14,13 +14,13 @@ import assets_arrays from "./assets/load_obj";
 
 // Define the Object3D class to represent 3D objects
 class Object3D {
-  constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[1,1,1]){
-    this.id = id;
-    this.position = position;
-    this.rotation = rotation;
-    this.scale = scale;
-    this.matrix = twgl.m4.create();
-  }
+    constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[1,1,1]){
+        this.id = id;
+        this.position = position;
+        this.rotation = rotation;
+        this.scale = scale;
+        this.matrix = twgl.m4.create();
+    }
 }
 
 // Define the agent server URI
@@ -31,7 +31,10 @@ const agents = [];
 const obstacles = [];
 
 // Initialize WebGL-related variables
-let gl, programInfo, agentArrays, obstacleArrays, agentsBufferInfo, obstaclesBufferInfo, agentsVao, obstaclesVao;
+let gl, programInfo;
+let agentArrays, obstacleArrays;
+let agentsBufferInfo, obstaclesBufferInfo;
+let agentsVao, obstaclesVao;
 
 // General visualization settings
 const settings = {
@@ -65,163 +68,174 @@ let frameCount = 0;
 
 // Define the data object
 const data = {
-  width: undefined,
-  height: undefined
+    width: undefined,
+    height: undefined
 };
 
 // Main function to initialize and run the application
 async function main() {
-  const canvas = document.querySelector('canvas');
-  gl = canvas.getContext('webgl2');
+    const canvas = document.querySelector('canvas');
+    gl = canvas.getContext('webgl2');
 
-  // Create the program information using the vertex and fragment shaders
-  programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
+    // Create the program information using the vertex and fragment shaders
+    programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
 
-  // Generate the agent and obstacle data
-  agentArrays = assets_arrays.bike_frame;
-  console.log("Agent arrays:", agentArrays);
-  obstacleArrays = assets_arrays.grass;
-  console.log("Obstacle arrays:", obstacleArrays);
+    // Generate the agent and obstacle data
+    agentArrays = assets_arrays.bike_frame;
+    console.log("Agent arrays:", agentArrays);
+    obstacleArrays = assets_arrays.grass;
+    console.log("Obstacle arrays:", obstacleArrays);
 
-  // Create buffer information from the agent and obstacle data
-  agentsBufferInfo = twgl.createBufferInfoFromArrays(gl, agentArrays);
-  obstaclesBufferInfo = twgl.createBufferInfoFromArrays(gl, obstacleArrays);
+    // Create buffer information from the agent and obstacle data
+    agentsBufferInfo = twgl.createBufferInfoFromArrays(gl, agentArrays);
+    obstaclesBufferInfo = twgl.createBufferInfoFromArrays(gl, obstacleArrays);
 
-  // Create vertex array objects (VAOs) from the buffer information
-  agentsVao = twgl.createVAOFromBufferInfo(gl, programInfo, agentsBufferInfo);
-  obstaclesVao = twgl.createVAOFromBufferInfo(gl, programInfo, obstaclesBufferInfo);
+    // Create vertex array objects (VAOs) from the buffer information
+    agentsVao = twgl.createVAOFromBufferInfo(
+        gl, programInfo, agentsBufferInfo
+    );
+    obstaclesVao = twgl.createVAOFromBufferInfo(
+        gl, programInfo, obstaclesBufferInfo
+    );
 
-  // Set up the user interface
-  setupUI();
+    // Set up the user interface
+    setupUI();
 
-  // Initialize the agents model
-  await initAgentsModel();
+    // Initialize the agents model
+    await initAgentsModel();
 
-  // Get the agents and obstacles
-  await getAgents();
-  await getObstacles();
+    // Get the agents and obstacles
+    await getAgents();
+    await getObstacles();
 
-  // Draw the scene
-  await drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo);
+    // Draw the scene
+    await drawScene(
+        gl, programInfo,
+        agentsVao, agentsBufferInfo,
+        obstaclesVao, obstaclesBufferInfo
+    );
 }
 
 /*
  * Initializes the agents model by sending a POST request to the agent server.
  */
 async function initAgentsModel() {
-  try {
-    // Send a POST request to the agent server to initialize the model
-    let response = await fetch(agent_server_uri + "init")
+    try {
+        // Send a POST request to the agent server to initialize the model
+        let response = await fetch(agent_server_uri + "init")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON and log the message
-      let result = await response.json()
-      console.log(result.message)
-      data.width = result.width;
-      data.height = result.height;
+        // Check if the response was successful
+        if (response.ok) {
+           // Parse the response as JSON and log the message
+           let result = await response.json()
+           console.log(result.message)
+           data.width = result.width;
+           data.height = result.height;
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
  * Retrieves the current positions of all agents from the agent server.
  */
 async function getAgents() {
-  try {
-    // Send a GET request to the agent server to retrieve the agent positions
-    let response = await fetch(agent_server_uri + "getAgents")
+    try {
+        // Send a GET request to the agent server to retrieve the agent positions
+        let response = await fetch(agent_server_uri + "getAgents")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON
-      let result = await response.json()
+        // Check if the response was successful
+        if (response.ok) {
+            // Parse the response as JSON
+            let result = await response.json()
 
-      // Log the agent positions
-      console.log(result.positions)
+            // Log the agent positions
+            console.log(result.positions)
 
-      // Check if the agents array is empty
-      if(agents.length == 0){
-        // Create new agents and add them to the agents array
-        for (const agent of result.positions) {
-          const newAgent = new Object3D(agent.id, [agent.x, agent.y, agent.z])
-          agents.push(newAgent)
+            // Check if the agents array is empty
+            if (agents.length == 0) {
+                // Create new agents and add them to the agents array
+                for (const agent of result.positions) {
+                    const newAgent = new Object3D(
+                        agent.id, [agent.x, agent.y, agent.z]
+                    );
+                    agents.push(newAgent)
+                }
+                // Log the agents array
+                console.log("Agents:", agents)
+            } else {
+                // Update the positions of existing agents
+                for (const agent of result.positions) {
+                    const current_agent = agents.find(
+                        (object3d) => object3d.id == agent.id
+                    );
+    
+                    // Check if the agent exists in the agents array
+                    if(current_agent != undefined){
+                        // Update the agent's position
+                        current_agent.position = [agent.x, agent.y, agent.z]
+                    }
+                }
+            }
         }
-        // Log the agents array
-        console.log("Agents:", agents)
 
-      } else {
-        // Update the positions of existing agents
-        for (const agent of result.positions) {
-          const current_agent = agents.find((object3d) => object3d.id == agent.id)
-
-          // Check if the agent exists in the agents array
-          if(current_agent != undefined){
-            // Update the agent's position
-            current_agent.position = [agent.x, agent.y, agent.z]
-          }
-        }
-      }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
  * Retrieves the current positions of all obstacles from the agent server.
  */
 async function getObstacles() {
-  try {
-    // Send a GET request to the agent server to retrieve the obstacle positions
-    let response = await fetch(agent_server_uri + "getObstacles")
+    try {
+        // Send a GET request to the agent server to retrieve the
+        // obstacle positions
+        let response = await fetch(agent_server_uri + "getObstacles")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON
-      let result = await response.json()
+        // Check if the response was successful
+        if (response.ok) {
+            // Parse the response as JSON
+            let result = await response.json()
 
-      // Create new obstacles and add them to the obstacles array
-      for (const obstacle of result.positions) {
-        const newObstacle = new Object3D(obstacle.id, [obstacle.x, obstacle.y, obstacle.z])
-        obstacles.push(newObstacle)
-      }
-      // Log the obstacles array
-      console.log("Obstacles:", obstacles)
+            // Create new obstacles and add them to the obstacles array
+            for (const obstacle of result.positions) {
+                const newObstacle = new Object3D(
+                    obstacle.id, [obstacle.x, obstacle.y, obstacle.z]
+                );
+                obstacles.push(newObstacle)
+            }
+            // Log the obstacles array
+            console.log("Obstacles:", obstacles)
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
  * Updates the agent positions by sending a request to the agent server.
  */
 async function update() {
-  try {
-    // Send a request to the agent server to update the agent positions
-    let response = await fetch(agent_server_uri + "update")
+    try {
+        // Send a request to the agent server to update the agent positions
+        let response = await fetch(agent_server_uri + "update")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Retrieve the updated agent positions
-      await getAgents()
-      // Log a message indicating that the agents have been updated
-      console.log("Updated agents")
+        // Check if the response was successful
+        if (response.ok) {
+            // Retrieve the updated agent positions
+            await getAgents()
+            // Log a message indicating that the agents have been updated
+            console.log("Updated agents")
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
@@ -234,7 +248,11 @@ async function update() {
  * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
  * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
  */
-async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo) {
+async function drawScene(
+    gl, programInfo,
+    agentsVao, agentsBufferInfo,
+    obstaclesVao, obstaclesBufferInfo
+) {
     // Resize the canvas to match the display size
     twgl.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -280,21 +298,29 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
     twgl.setUniforms(programInfo, globalUniforms);
 
     // Draw the agents
-    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
+    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix);
     // Draw the obstacles
-    drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix)
+    drawObstacles(
+        distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix
+    );
 
     // Increment the frame count
     frameCount++
 
     // Update the scene every 30 frames
-    if(frameCount%30 == 0){
-      frameCount = 0
-      await update()
+    if (frameCount % 30 == 0) {
+        frameCount = 0
+        await update()
     }
 
     // Request the next frame
-    requestAnimationFrame(()=>drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo))
+    requestAnimationFrame(
+        () => drawScene(
+            gl, programInfo,
+            agentsVao, agentsBufferInfo,
+            obstaclesVao, obstaclesBufferInfo
+        )
+    );
 }
 
 /*
@@ -305,7 +331,9 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
  * @param {Object} agentsBufferInfo - The buffer information for agents.
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
-function drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix){
+function drawAgents(
+    distance, agentsVao, agentsBufferInfo, viewProjectionMatrix
+) {
     // Bind the vertex array object for agents
     gl.bindVertexArray(agentsVao);
 
@@ -350,7 +378,9 @@ function drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
  * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
-function drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix){
+function drawObstacles(
+    distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix
+) {
     // Bind the vertex array object for obstacles
     gl.bindVertexArray(obstaclesVao);
 
@@ -358,13 +388,23 @@ function drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjecti
     for(const obstacle of obstacles){
         // Create the obstacle's transformation matrix
         const obstacle_trans = twgl.v3.create(...obstacle.position);
-        const obstacle_scale = twgl.v3.create(...obstacle.scale.map(x => 0.4 * x));
+        const obstacle_scale = twgl.v3.create(
+            ...obstacle.scale.map(x => 0.4 * x)
+        );
 
         // Calculate the obstacle's matrix
-        obstacle.matrix = twgl.m4.translate(twgl.m4.identity(), obstacle_trans);
-        obstacle.matrix = twgl.m4.rotateX(obstacle.matrix, obstacle.rotation[0]);
-        obstacle.matrix = twgl.m4.rotateY(obstacle.matrix, obstacle.rotation[1]);
-        obstacle.matrix = twgl.m4.rotateZ(obstacle.matrix, obstacle.rotation[2]);
+        obstacle.matrix = twgl.m4.translate(
+            twgl.m4.identity(), obstacle_trans
+        );
+        obstacle.matrix = twgl.m4.rotateX(
+            obstacle.matrix, obstacle.rotation[0]
+        );
+        obstacle.matrix = twgl.m4.rotateY(
+            obstacle.matrix, obstacle.rotation[1]
+        );
+        obstacle.matrix = twgl.m4.rotateZ(
+            obstacle.matrix, obstacle.rotation[2]
+        );
         obstacle.matrix = twgl.m4.scale(obstacle.matrix, obstacle_scale);
 
         const obstacle_worldViewProjection = twgl.m4.multiply(
@@ -402,13 +442,17 @@ function setupWorldView(gl) {
     const projectionMatrix = twgl.m4.perspective(fov, aspect, 1, 200);
 
     // Set the target position
-    const target = [data.width/2, 0, data.height/2];
+    const target = [data.width / 2, 0, data.height / 2];
 
     // Set the up vector
     const up = [0, 1, 0];
 
     // Calculate the camera position
-    const camPos = twgl.v3.create(cameraPosition.x + data.width/2, cameraPosition.y, cameraPosition.z+data.height/2)
+    const camPos = twgl.v3.create(
+        settings.cameraPosition.x + data.width / 2,
+        settings.cameraPosition.y,
+        settings.cameraPosition.z + data.height / 2
+    );
 
     // Create the camera matrix
     const cameraMatrix = twgl.m4.lookAt(camPos, target, up);
