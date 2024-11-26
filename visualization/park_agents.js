@@ -112,10 +112,10 @@ async function main() {
 
     // Get the agents and obstacles
     await getAgents();
-    await getObstacles();
+    await getObstacles(decorators.tile);
 
     // Draw the scene
-    await drawScene(gl, programInfo, bike_agent, tiles.grass);
+    await drawScene(gl, programInfo, bike_agent, tiles.grass, decorators.tile);
 }
 
 /*
@@ -192,7 +192,7 @@ async function getAgents() {
 /*
  * Retrieves the current positions of all obstacles from the agent server.
  */
-async function getObstacles() {
+async function getObstacles(decorators_WebGL) {
     try {
         // Send a GET request to the agent server to retrieve the
         // obstacle positions
@@ -208,6 +208,11 @@ async function getObstacles() {
                 const newObstacle = new Object3D(
                     obstacle.id, [obstacle.x, obstacle.y, obstacle.z]
                 );
+                if (Math.random() < 0.5) {
+                    newObstacle.decorator = "tree1";
+                } else {
+                    newObstacle.decorator = "tree2";
+                }
                 obstacles.push(newObstacle)
             }
             // Log the obstacles array
@@ -250,7 +255,9 @@ async function update() {
  * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
  * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
  */
-async function drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL) {
+async function drawScene(
+    gl, programInfo, agent_WebGL, obstacle_WebGL, decorators_WebGL
+) {
     // Resize the canvas to match the display size
     twgl.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -299,7 +306,7 @@ async function drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL) {
     drawAgents(distance, agent_WebGL, viewProjectionMatrix);
     // Draw the obstacles
     drawObstacles(
-        distance, obstacle_WebGL, viewProjectionMatrix
+        distance, obstacle_WebGL, decorators_WebGL, viewProjectionMatrix
     );
 
     // Increment the frame count
@@ -313,7 +320,9 @@ async function drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL) {
 
     // Request the next frame
     requestAnimationFrame(
-        () => drawScene(gl, programInfo, agent_WebGL, obstacle_WebGL)
+        () => drawScene(
+            gl, programInfo, agent_WebGL, obstacle_WebGL, decorators_WebGL
+        )
     );
 }
 
@@ -367,11 +376,13 @@ function drawAgents(
         gl.bindVertexArray(agent_WebGL.wheel.vao);
 
         for (let i = 0; i < 2; i++) {
-            // Front wheel transformations
+            // Create the wheel's transformation matrix
             let wheel_trans = twgl.v3.create(0, 0, 0.5);
             if (i == 1) {
                 wheel_trans = twgl.v3.negate(wheel_trans);
             };
+
+            // Calculate the wheel's matrix
             let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
             wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
             wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
@@ -379,7 +390,6 @@ function drawAgents(
             wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
             wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
 
-            // Front wheel
             const wheel_worldViewProjection = twgl.m4.multiply(
                 viewProjectionMatrix, wheel_matrix
             );
@@ -390,7 +400,7 @@ function drawAgents(
                 u_worldViewProjection: wheel_worldViewProjection,
             };
 
-            // Set the uniforms and draw the agent
+            // Set the uniforms and draw the wheel
             twgl.setUniforms(programInfo, wheel_uniforms);
             twgl.drawBufferInfo(gl, agent_WebGL.wheel.buffer_info);
         }
@@ -407,11 +417,8 @@ function drawAgents(
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
 function drawObstacles(
-    distance, obstacle_WebGL, viewProjectionMatrix
+    distance, obstacle_WebGL, decorators_WebGL, viewProjectionMatrix
 ) {
-    // Bind the vertex array object for obstacles
-    gl.bindVertexArray(obstacle_WebGL.vao);
-
     // Iterate over the obstacles
     for(const obstacle of obstacles){
         // Create the obstacle's transformation matrix
@@ -446,10 +453,15 @@ function drawObstacles(
             u_worldViewProjection: obstacle_worldViewProjection,
         }
 
+        // Bind the vertex array object for obstacles
+        gl.bindVertexArray(obstacle_WebGL.vao);
         // Set the uniforms and draw the obstacle
         twgl.setUniforms(programInfo, uniforms);
         twgl.drawBufferInfo(gl, obstacle_WebGL.buffer_info);
 
+        // Bind the decorator arrays to be drawn
+        gl.bindVertexArray(decorators_WebGL[obstacle.decorator].vao);
+        twgl.drawBufferInfo(gl, decorators_WebGL[obstacle.decorator].buffer_info);
     }
 }
 
