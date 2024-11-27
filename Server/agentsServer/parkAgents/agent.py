@@ -21,6 +21,7 @@ class Bike(Agent):
         self.destination = destination
         self.destination_neighbors = []
         self.path = []
+        self.direction = "Down"
         print(f"AGENT {self.unique_id} constructed")
 
     def get_distance(self, pos1, pos2):
@@ -133,6 +134,10 @@ class Bike(Agent):
                 next_step = self.pos
         
         self.model.grid.move_agent(self, next_step)
+        self.direction = next(filter(
+            lambda a: isinstance(a, Road),
+            self.model.grid.get_cell_list_contents(self.pos)
+        )).direction
 
     def step(self):
         """
