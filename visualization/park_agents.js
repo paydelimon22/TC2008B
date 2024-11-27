@@ -47,16 +47,20 @@ let gl, programInfo;
 
 // General visualization settings
 const settings = {
-    // Speed in degrees
-    rotationSpeed: {
-        x: 0,
-        y: 30,
-        z: 0,
-    },
-    cameraPosition: {
-        x: 0,
-        y: 9,
-        z: 9,
+    // Camera information for visualization perspective.
+    camera: {
+        position: {
+            x: 0,
+            y: 0,
+            z: 0,
+        },
+        rotation: {
+            x: 35,
+            y: 45,
+        },
+        scale: {
+            r: 1
+        },
     },
     light: {
         position: {
@@ -271,6 +275,9 @@ async function drawScene(
     // Clear the color and depth buffers
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+    // WebGL cull faces
+    gl.enable(gl.CULL_FACE);
+
     // Use the program
     gl.useProgram(programInfo.program);
 
@@ -287,9 +294,9 @@ async function drawScene(
         settings.light.position.z,
     );
     const v3_cameraPosition = twgl.v3.create(
-        settings.cameraPosition.x,
-        settings.cameraPosition.y,
-        settings.cameraPosition.z,
+        settings.camera.position.x,
+        settings.camera.position.y,
+        settings.camera.position.z,
     );
 
     const globalUniforms = {
@@ -473,7 +480,7 @@ function drawObstacles(
  */
 function setupWorldView(gl) {
     // Set the field of view (FOV) in radians
-    const fov = 45 * Math.PI / 180;
+    const fov = 60 * Math.PI / 180;
 
     // Calculate the aspect ratio of the canvas
     const aspect = gl.canvas.clientWidth / gl.canvas.clientHeight;
@@ -488,14 +495,42 @@ function setupWorldView(gl) {
     const up = [0, 1, 0];
 
     // Calculate the camera position
-    const camPos = twgl.v3.create(
-        settings.cameraPosition.x + data.width / 2,
-        settings.cameraPosition.y,
-        settings.cameraPosition.z + data.height / 2
+    const cam_v3_trans = twgl.v3.create(0, 0, 50);
+    const cam_traMat = twgl.m4.translation(cam_v3_trans);
+
+    // Calculate the camera rotation
+    const cam_rotXMat = twgl.m4.rotationX(
+        -settings.camera.rotation.x * Math.PI / 180
+    );
+    const cam_rotYMat = twgl.m4.rotationY(
+        (settings.camera.rotation.y - 180) * Math.PI / 180
     );
 
+    // Calculate the camera distance (scale)
+    const cam_v3_scale = twgl.v3.create(
+        settings.camera.scale.r,
+        settings.camera.scale.r,
+        settings.camera.scale.r,
+    );
+    const cam_scaleMat = twgl.m4.scaling(cam_v3_scale);
+
+    // Calculate the pivot translation
+    const cam_v3_pivot_trans = twgl.v3.create(data.width/2, 0, data.height/2);
+    const cam_pivotMat = twgl.m4.translation(cam_v3_pivot_trans);
+
     // Create the camera matrix
-    const cameraMatrix = twgl.m4.lookAt(camPos, target, up);
+    let cameraMatrix = twgl.m4.identity();
+    cameraMatrix = twgl.m4.multiply(cam_traMat, cameraMatrix);
+    cameraMatrix = twgl.m4.multiply(cam_scaleMat, cameraMatrix);
+    cameraMatrix = twgl.m4.multiply(cam_rotXMat, cameraMatrix);
+    cameraMatrix = twgl.m4.multiply(cam_rotYMat, cameraMatrix);
+    cameraMatrix = twgl.m4.multiply(cam_pivotMat, cameraMatrix);
+
+    // Update camera position in 3D space
+    let camPos = twgl.m4.getTranslation(cameraMatrix);
+    settings.camera.position.x = camPos[0];
+    settings.camera.position.y = camPos[1];
+    settings.camera.position.z = camPos[2];
 
     // Calculate the view matrix
     const viewMatrix = twgl.m4.inverse(cameraMatrix);
@@ -514,28 +549,31 @@ function setupUI() {
     // Create a new GUI instance
     const gui = new GUI();
 
-    // Create a folder for the camera position
-    const posFolder = gui.addFolder('Position:')
+    // Create a folder for the camera rotation
+    const rotFolder = gui.addFolder("Camera Rotation:");
 
     // Add a slider for the x-axis
-    posFolder.add(settings.cameraPosition, 'x', -50, 50)
+    rotFolder.add(settings.camera.rotation, 'x', 0, 90)
         .onChange( value => {
             // Update the camera position when the slider value changes
-            settings.cameraPosition.x = value
+            settings.camera.rotation.x = value
         });
 
     // Add a slider for the y-axis
-    posFolder.add( settings.cameraPosition, 'y', -50, 50)
+    rotFolder.add( settings.camera.rotation, 'y', -180, 180)
         .onChange( value => {
             // Update the camera position when the slider value changes
-            settings.cameraPosition.y = value
+            settings.camera.rotation.y = value
         });
 
-    // Add a slider for the z-axis
-    posFolder.add( settings.cameraPosition, 'z', -50, 50)
+    // Create a folder for the camera distance
+    const distFolder = gui.addFolder("Camera Distance:");
+
+    // Add a slider for the distance
+    distFolder.add( settings.camera.scale, "r", 0, 1)
         .onChange( value => {
-            // Update the camera position when the slider value changes
-            settings.cameraPosition.z = value
+            // Update the camera distance when the slider value changes
+            settings.camera.scale.r = value
         });
 }
 
