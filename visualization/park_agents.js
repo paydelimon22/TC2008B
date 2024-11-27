@@ -396,8 +396,14 @@ function drawAgents(
         gl.bindVertexArray(agent_WebGL.frame.vao);
 
         // Create the agent's transformation matrix
+        const agent_old_pos = twgl.v3.create(...agent.old_position);
+        const agent_new_pos = twgl.v3.create(...agent.position);
+        const agent_lerp_pos = twgl.v3.lerp(
+            agent_old_pos, agent_new_pos, frameCount / 30
+        );
+        const vertical_offset = twgl.v3.create(0, 0.25, 0);
         const agent_trans = twgl.v3.add(
-            twgl.v3.create(...agent.position), twgl.v3.create(0, 0.25, 0)
+            agent_lerp_pos, vertical_offset
         );
         const agent_scale = twgl.v3.create(...agent.scale);
 
