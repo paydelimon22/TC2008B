@@ -1,7 +1,7 @@
 from mesa import Model
 from mesa.time import RandomActivation
 from mesa.space import MultiGrid
-from .agent import *
+from .agent import Bike, Destination, Obstacle, Road, Traffic_Light
 import json
 
 
@@ -16,6 +16,7 @@ class ParkModel(Model):
         dataDictionary = json.load(open("park_files/mapDictionary.json"))
 
         self.traffic_lights = []
+        self.graph = []
 
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("park_files/2022_base.txt") as baseFile:
@@ -89,6 +90,8 @@ class ParkModel(Model):
 
         self.running = True
 
+        self.generate_graph()
+
     def step(self):
         """Advance the model by one step."""
         # Spawn new bikes every 10 episodes
@@ -120,6 +123,52 @@ class ParkModel(Model):
             if  not clear:
                 break
 
-            new_bike = Bike(self.next_id(), self)
+            destination_pos = [destination.pos for destination in self.get_agents_of_type(Destination)]
+            #Had to manually remove this destination as it cannot be reached
+            destination_pos.remove((21,22))
+
+            new_bike = Bike(self.next_id(), self, self.random.choice(destination_pos))
             self.grid.place_agent(new_bike, corner)
             self.schedule.add(new_bike)
+
+    def get_possible_roads(self, road):
+        neighbor_roads = [
+            neighbor
+            for neighbor in self.grid.get_neighbors(road.pos, moore=True, include_center=False)
+            if isinstance(neighbor, Road)
+        ]
+
+        possible_roads = []
+
+        for neighbor_road in neighbor_roads:
+            if (
+                road.direction == "Up"
+                and neighbor_road.pos[1] == road.pos[1] + 1
+            ):
+                possible_roads.append(neighbor_road)
+            elif (
+                road.direction == "Down"
+                and neighbor_road.pos[1] == road.pos[1] - 1
+            ):
+                possible_roads.append(neighbor_road)
+            elif (
+                road.direction == "Left"
+                and neighbor_road.pos[0] == road.pos[0] - 1
+            ):
+                possible_roads.append(neighbor_road)
+            elif (
+                road.direction == "Right"
+                and neighbor_road.pos[0] == road.pos[0] + 1
+            ):
+                possible_roads.append(neighbor_road)
+        return possible_roads
+
+    def generate_graph(self):
+        for road in self.get_agents_of_type(Road):
+            possible_roads = self.get_possible_roads(road)
+            self.graph.append((road.pos, possible_roads))
+
+    def graph_get(self, road):
+        for node in self.graph:
+            if road == node[0]:
+                return node[1]
