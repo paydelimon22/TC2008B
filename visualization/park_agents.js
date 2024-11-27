@@ -14,7 +14,7 @@ import assets_arrays from "./assets/load_obj";
 
 // Define the Object3D class to represent 3D objects
 class Object3D {
-    constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[1,1,1]){
+    constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[0.25,0.25,0.25]){
         this.id = id;
         this.position = position;
         this.rotation = rotation;
@@ -38,9 +38,9 @@ class WebGLObject {
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
 
-// Initialize arrays to store agents and obstacles
+// Initialize arrays to store agents and map_tiles
 const agents = [];
-const obstacles = [];
+const map_tiles = {};
 
 // Initialize WebGL-related variables
 let gl, programInfo;
@@ -93,18 +93,22 @@ async function main() {
     // Create the program information using the vertex and fragment shaders
     programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
 
-    let bike_agent = {
+    let agent_WebGL = {
         frame: new WebGLObject(assets_arrays.bike_frame),
         wheel: new WebGLObject(assets_arrays.bike_wheel),
     };
-    let tiles = {
-        grass: new WebGLObject(assets_arrays.grass),
-        road: new WebGLObject(assets_arrays.road),
-    };
-    let decorators = {
-        tile: {
-            tree1: new WebGLObject(assets_arrays.tree1),
-            tree2: new WebGLObject(assets_arrays.tree2),
+    let map_WebGL = {
+        tiles: {
+            grass: new WebGLObject(assets_arrays.grass),
+            road: new WebGLObject(assets_arrays.road),
+        },
+        traffic_light: new WebGLObject(assets_arrays.traffic_light),
+        destination: new WebGLObject(assets_arrays.destination),
+        decorators: {
+            tile: {
+                tree1: new WebGLObject(assets_arrays.tree1),
+                tree2: new WebGLObject(assets_arrays.tree2),
+            },
         },
     };
 
@@ -114,12 +118,12 @@ async function main() {
     // Initialize the agents model
     await initAgentsModel();
 
-    // Get the agents and obstacles
+    // Get the agents and map_tiles
     await getAgents();
-    await getObstacles(decorators.tile);
+    await getMap();
 
     // Draw the scene
-    await drawScene(gl, programInfo, bike_agent, tiles.grass, decorators.tile);
+    await drawScene(gl, programInfo, agent_WebGL, map_WebGL);
 }
 
 /*
@@ -194,33 +198,37 @@ async function getAgents() {
 }
 
 /*
- * Retrieves the current positions of all obstacles from the agent server.
+ * Retrieves the current positions of all map_tiles from the agent server.
  */
-async function getObstacles(decorators_WebGL) {
+async function getMap() {
     try {
         // Send a GET request to the agent server to retrieve the
-        // obstacle positions
-        let response = await fetch(agent_server_uri + "getObstacles")
+        // map_tile positions
+        let response = await fetch(agent_server_uri + "getMap")
 
         // Check if the response was successful
         if (response.ok) {
             // Parse the response as JSON
             let result = await response.json()
 
-            // Create new obstacles and add them to the obstacles array
-            for (const obstacle of result.positions) {
-                const newObstacle = new Object3D(
-                    obstacle.id, [obstacle.x, obstacle.y, obstacle.z]
+            // Create new map_tiles and add them to the map_tiles array
+            console.log("Got Map:", result.map);
+            for (const tile_type in result.map) {
+                map_tiles[tile_type] = result.map[tile_type].map(
+                    tile => new Object3D(tile.id, [tile.x, tile.y, tile.z])
                 );
-                if (Math.random() < 0.5) {
-                    newObstacle.decorator = "tree1";
-                } else {
-                    newObstacle.decorator = "tree2";
-                }
-                obstacles.push(newObstacle)
             }
-            // Log the obstacles array
-            console.log("Obstacles:", obstacles)
+            map_tiles.obstacles.map(
+                obstacle => {
+                    if (Math.random() < 0.5) {
+                        obstacle.decorator = "tree1";
+                    } else {
+                        obstacle.decorator = "tree2";
+                    }
+                }
+            );
+            // Log the map_tiles array
+            console.log("Map:", map_tiles)
         }
     } catch (error) {
         // Log any errors that occur during the request
@@ -250,18 +258,16 @@ async function update() {
 }
 
 /*
- * Draws the scene by rendering the agents and obstacles.
+ * Draws the scene by rendering the agents and map_tiles.
  *
  * @param {WebGLRenderingContext} gl - The WebGL rendering context.
  * @param {Object} programInfo - The program information.
  * @param {WebGLVertexArrayObject} agentsVao - The vertex array object for agents.
  * @param {Object} agentsBufferInfo - The buffer information for agents.
- * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
- * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
+ * @param {WebGLVertexArrayObject} map_tilesVao - The vertex array object for map_tiles.
+ * @param {Object} map_tilesBufferInfo - The buffer information for map_tiles.
  */
-async function drawScene(
-    gl, programInfo, agent_WebGL, obstacle_WebGL, decorators_WebGL
-) {
+async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
     // Resize the canvas to match the display size
     twgl.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -311,10 +317,8 @@ async function drawScene(
 
     // Draw the agents
     drawAgents(distance, agent_WebGL, viewProjectionMatrix);
-    // Draw the obstacles
-    drawObstacles(
-        distance, obstacle_WebGL, decorators_WebGL, viewProjectionMatrix
-    );
+    // Draw the map_tiles
+    drawMap(distance, map_WebGL, viewProjectionMatrix);
 
     // Increment the frame count
     frameCount++
@@ -328,7 +332,7 @@ async function drawScene(
     // Request the next frame
     requestAnimationFrame(
         () => drawScene(
-            gl, programInfo, agent_WebGL, obstacle_WebGL, decorators_WebGL
+            gl, programInfo, agent_WebGL, map_WebGL
         )
     );
 }
@@ -354,7 +358,7 @@ function drawAgents(
         const agent_trans = twgl.v3.add(
             twgl.v3.create(...agent.position), twgl.v3.create(0, 0.25, 0)
         );
-        const agent_scale = twgl.v3.create(...agent.scale.map(x => 0.4 * x));
+        const agent_scale = twgl.v3.create(...agent.scale);
 
         // Calculate the agent's matrix
         agent.matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
@@ -416,59 +420,83 @@ function drawAgents(
 
 
 /*
- * Draws the obstacles.
+ * Draws the map_tiles.
  *
  * @param {Number} distance - The distance for rendering.
- * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
- * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
+ * @param {WebGLVertexArrayObject} map_tilesVao - The vertex array object for map_tiles.
+ * @param {Object} map_tilesBufferInfo - The buffer information for map_tiles.
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
-function drawObstacles(
-    distance, obstacle_WebGL, decorators_WebGL, viewProjectionMatrix
-) {
-    // Iterate over the obstacles
-    for(const obstacle of obstacles){
-        // Create the obstacle's transformation matrix
-        const obstacle_trans = twgl.v3.create(...obstacle.position);
-        const obstacle_scale = twgl.v3.create(
-            ...obstacle.scale.map(x => 0.4 * x)
-        );
-
-        // Calculate the obstacle's matrix
-        obstacle.matrix = twgl.m4.translate(
-            twgl.m4.identity(), obstacle_trans
-        );
-        obstacle.matrix = twgl.m4.rotateX(
-            obstacle.matrix, obstacle.rotation[0]
-        );
-        obstacle.matrix = twgl.m4.rotateY(
-            obstacle.matrix, obstacle.rotation[1]
-        );
-        obstacle.matrix = twgl.m4.rotateZ(
-            obstacle.matrix, obstacle.rotation[2]
-        );
-        obstacle.matrix = twgl.m4.scale(obstacle.matrix, obstacle_scale);
-
-        const obstacle_worldViewProjection = twgl.m4.multiply(
-            viewProjectionMatrix, obstacle.matrix
-        );
-
-        // Set the uniforms for the obstacle
-        let uniforms = {
-            u_world: obstacle.matrix,
-            u_worldInverseTransform: twgl.m4.identity(),
-            u_worldViewProjection: obstacle_worldViewProjection,
+function drawMap(distance, map_WebGL, viewProjectionMatrix) {
+    // Iterate over the map_tiles
+    for (const tile_type in map_tiles) {
+        let model;
+        switch (tile_type) {
+            case "obstacles":
+                model = map_WebGL.tiles.grass;
+                break;
+            case "roads":
+                model = map_WebGL.tiles.road;
+                break;
+            case "traffic_lights":
+                model = map_WebGL.traffic_light;
+                break;
+            case "destinations":
+                model = map_WebGL.destination;
+                break;
         }
 
-        // Bind the vertex array object for obstacles
-        gl.bindVertexArray(obstacle_WebGL.vao);
-        // Set the uniforms and draw the obstacle
-        twgl.setUniforms(programInfo, uniforms);
-        twgl.drawBufferInfo(gl, obstacle_WebGL.buffer_info);
+        let tile_decorators = map_WebGL.decorators.tile;
 
-        // Bind the decorator arrays to be drawn
-        gl.bindVertexArray(decorators_WebGL[obstacle.decorator].vao);
-        twgl.drawBufferInfo(gl, decorators_WebGL[obstacle.decorator].buffer_info);
+        for (const tile of map_tiles[tile_type]) {
+            // Create the map_tile's transformation matrix
+            const tile_trans = twgl.v3.create(...tile.position);
+            const tile_scale = twgl.v3.create(...tile.scale);
+
+            // Calculate the tile's matrix
+            tile.matrix = twgl.m4.translate(
+                twgl.m4.identity(), tile_trans
+            );
+            tile.matrix = twgl.m4.rotateX(
+                tile.matrix, tile.rotation[0]
+            );
+            tile.matrix = twgl.m4.rotateY(
+                tile.matrix, tile.rotation[1]
+            );
+            tile.matrix = twgl.m4.rotateZ(
+                tile.matrix, tile.rotation[2]
+            );
+            tile.matrix = twgl.m4.scale(tile.matrix, tile_scale);
+
+            const tile_worldViewProjection = twgl.m4.multiply(
+                viewProjectionMatrix, tile.matrix
+            );
+
+            // Set the uniforms for the tile
+            let uniforms = {
+                u_world: tile.matrix,
+                u_worldInverseTransform: twgl.m4.identity(),
+                u_worldViewProjection: tile_worldViewProjection,
+            }
+
+            // Bind the vertex array object for tiles
+            gl.bindVertexArray(model.vao);
+            // Set the uniforms and draw the tile
+            twgl.setUniforms(programInfo, uniforms);
+            twgl.drawBufferInfo(gl, model.buffer_info);
+
+            if (tile_type == "obstacles" && !map_tiles.destinations.find(
+                    destination => destination.position.every(
+                        (pos, index) => pos == tile.position[index]
+                    )
+                )
+            ) {
+                gl.bindVertexArray(tile_decorators[tile.decorator].vao);
+                twgl.drawBufferInfo(
+                    gl, tile_decorators[tile.decorator].buffer_info
+                );
+            };
+        }
     }
 }
 
