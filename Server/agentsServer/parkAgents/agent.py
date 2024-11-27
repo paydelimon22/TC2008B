@@ -149,6 +149,7 @@ class Bike(Agent):
             print(f"Agent: {self.unique_id} reached its destination!")
             self.model.grid.remove_agent(self)
             self.model.schedule.remove(self)
+            self.model.deregister_agent(self)
 
         else:
             self.move()
