@@ -39,7 +39,7 @@ class WebGLObject {
 const agent_server_uri = "http://localhost:8585/";
 
 // Initialize arrays to store agents and map_tiles
-const agents = [];
+let agents = [];
 const map_tiles = {};
 
 // Initialize WebGL-related variables
@@ -165,25 +165,53 @@ async function getAgents() {
             console.log(result.positions)
 
             // Create new agents and add them to the agents array
-            agents.length = 0;
+            agents = result.agents.map(
+                new_agent => {
+                    let agent = new Object3D(
+                        new_agent.id, [new_agent.x, new_agent.y, new_agent.z]
+                    );
 
-            for (const agent of result.positions) {
-                const newAgent = new Object3D(
-                    agent.id, [agent.x, agent.y, agent.z]
-                );
-                switch (agent.direction) {
-                    case "Right":
-                        newAgent.rotation[1] = Math.PI / 2;
-                        break;
-                    case "Left":
-                        newAgent.rotation[1] = -Math.PI / 2;
-                        break;
-                    case "Down":
-                        newAgent.rotation[1] = Math.PI;
-                        break;
+                    switch (new_agent.direction) {
+                        case "Right":
+                            agent.rotation[1] = Math.PI / 2;
+                            break;
+                        case "Left":
+                            agent.rotation[1] = -Math.PI / 2;
+                            break;
+                        case "Down":
+                            agent.rotation[1] = Math.PI;
+                            break;
+                    }
+
+                    agent.old_position = [
+                        new_agent.x, new_agent.y, new_agent.z
+                    ];
+                    agent.old_rotation = [
+                        agent.rotation[0],
+                        agent.rotation[1],
+                        agent.rotation[2],
+                    ];
+
+                    let old_agent = agents.find(
+                        old_a => old_a.id == new_agent.id
+                    );
+
+                    if (old_agent != undefined) {
+                        agent.old_position = [
+                            old_agent.position[0],
+                            old_agent.position[1],
+                            old_agent.position[2],
+                        ];
+                        agent.old_rotation = [
+                            old_agent.rotation[0],
+                            old_agent.rotation[1],
+                            old_agent.rotation[2],
+                        ];
+                    }
+
+                    return agent;
                 }
-                agents.push(newAgent)
-            }
+            );
             // Log the agents array
             console.log("Agents:", agents)
         }
