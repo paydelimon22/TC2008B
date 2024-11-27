@@ -60,7 +60,8 @@ def getAgents():
             agentPositions = [
                 {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
                 for agents, (x, z) in parkModel.grid.coord_iter()
-                for a in agents if isinstance(a, Bike)
+                for a in agents
+                if isinstance(a, Bike)
             ]
 
             return jsonify({"positions": agentPositions})
@@ -71,7 +72,7 @@ def getAgents():
 
 
 # This route will be used to get the positions of the obstacles
-@app.route("/getObstacles", methods=["GET"])
+@app.route("/getMap", methods=["GET"])
 @cross_origin()
 def getObstacles():
     global parkModel
@@ -80,17 +81,34 @@ def getObstacles():
         try:
             # Get the positions of the obstacles and return them to WebGL in JSON.json.t.
             # Same as before, the positions are sent as a list of dictionaries, where each dictionary has the id and position of an obstacle.
-            carPositions = [
-                {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
-                for agents, (x, z) in parkModel.grid.coord_iter()
-                for a in agents if isinstance(a, Obstacle)
-            ]
+            map_tiles = {
+                "obstacles": [],
+                "roads": [],
+                "traffic_lights": [],
+                "destinations": [],
+            }
+            for agents, (x, y) in parkModel.grid.coord_iter():
+                for a in agents:
+                    agent_info = {
+                        "id": str(a.unique_id),
+                        "x": x,
+                        "y": 1,
+                        "z": y,
+                    }
+                    if isinstance(a, Obstacle):
+                        map_tiles["obstacles"].append(agent_info)
+                    elif isinstance(a, Road):
+                        map_tiles["roads"].append(agent_info)
+                    elif isinstance(a, Traffic_Light):
+                        map_tiles["traffic_lights"].append(agent_info)
+                    elif isinstance(a, Destination):
+                        map_tiles["destinations"].append(agent_info)
 
-            return jsonify({"positions": carPositions})
+            return jsonify({"map": map_tiles})
         except Exception as e:
             print(traceback.format_exc())
             print(e)
-            return jsonify({"message": "Error with obstacle positions"}), 500
+            return jsonify({"message": "Error with map"}), 500
 
 
 # This route will be used to update the model

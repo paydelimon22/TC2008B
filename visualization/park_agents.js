@@ -3,56 +3,49 @@
 import * as twgl from 'twgl.js';
 import GUI from 'lil-gui';
 
-// Define the vertex shader code, using GLSL 3.00
-const vsGLSL = `#version 300 es
-in vec4 a_position;
-in vec4 a_color;
+// Import the vertex shader code, using GLSL 3.00
+import vsGLSL from "./shaders/vs_phong.glsl?raw";
 
-uniform mat4 u_transforms;
-uniform mat4 u_matrix;
+// Import the fragment shader code, using GLSL 3.00
+import fsGLSL from "./shaders/fs_phong.glsl?raw";
 
-out vec4 v_color;
-
-void main() {
-gl_Position = u_matrix * a_position;
-v_color = a_color;
-}
-`;
-
-// Define the fragment shader code, using GLSL 3.00
-const fsGLSL = `#version 300 es
-precision highp float;
-
-in vec4 v_color;
-
-out vec4 outColor;
-
-void main() {
-outColor = v_color;
-}
-`;
+// Import the asset arrays from loader module.
+import assets_arrays from "./assets/load_obj";
 
 // Define the Object3D class to represent 3D objects
 class Object3D {
-  constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[1,1,1]){
-    this.id = id;
-    this.position = position;
-    this.rotation = rotation;
-    this.scale = scale;
-    this.matrix = twgl.m4.create();
-  }
+    constructor(id, position=[0,0,0], rotation=[0,0,0], scale=[0.25,0.25,0.25]){
+        this.id = id;
+        this.position = position;
+        this.rotation = rotation;
+        this.scale = scale;
+        this.matrix = twgl.m4.create();
+    }
+}
+
+class WebGLObject {
+    constructor(arrays) {
+        this.arrays = arrays;
+        this.buffer_info = twgl.createBufferInfoFromArrays(
+            gl, this.arrays
+        );
+        this.vao = twgl.createVAOFromBufferInfo(
+            gl, programInfo, this.buffer_info
+        );
+    }
 }
 
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
 
-// Initialize arrays to store agents and obstacles
+// Initialize arrays to store agents and map_tiles
 const agents = [];
-const obstacles = [];
+const map_tiles = {};
 
 // Initialize WebGL-related variables
-let gl, programInfo, agentArrays, obstacleArrays, agentsBufferInfo, obstaclesBufferInfo, agentsVao, obstaclesVao;
+let gl, programInfo;
 
+// General visualization settings
 const settings = {
     // Camera information for visualization perspective.
     camera: {
@@ -69,17 +62,16 @@ const settings = {
             r: 1
         },
     },
-    // Uniform lighting for all the objects in the scene.
     light: {
-        direction: {
-            x: 1,
-            y: 1,
-            z: 1,
+        position: {
+            x: 0,
+            y: 50,
+            z: 0,
         },
         color: {
-            ambient: [0.5, 0.5, 0.5, 1.0],
-            diffuse: [1, 1, 1, 1.0],
-            specular: [1, 1, 1, 1.0],
+            ambient: [0.1, 0.1, 0.1, 1.0],
+            diffuse: [1.0, 1.0, 1.0, 1.0],
+            specular: [0.75, 0.75, 0.75, 1.0],
         },
     },
 };
@@ -89,174 +81,193 @@ let frameCount = 0;
 
 // Define the data object
 const data = {
-  width: undefined,
-  height: undefined
+    width: undefined,
+    height: undefined
 };
 
 // Main function to initialize and run the application
 async function main() {
-  const canvas = document.querySelector('canvas');
-  gl = canvas.getContext('webgl2');
+    const canvas = document.querySelector('canvas');
+    gl = canvas.getContext('webgl2');
 
-  // Create the program information using the vertex and fragment shaders
-  programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
+    // Create the program information using the vertex and fragment shaders
+    programInfo = twgl.createProgramInfo(gl, [vsGLSL, fsGLSL]);
 
-  // Generate the agent and obstacle data
-  agentArrays = generateData(1);
-  obstacleArrays = generateObstacleData(1);
+    let agent_WebGL = {
+        frame: new WebGLObject(assets_arrays.bike_frame),
+        wheel: new WebGLObject(assets_arrays.bike_wheel),
+    };
+    let map_WebGL = {
+        tiles: {
+            grass: new WebGLObject(assets_arrays.grass),
+            road: new WebGLObject(assets_arrays.road),
+        },
+        traffic_light: new WebGLObject(assets_arrays.traffic_light),
+        destination: new WebGLObject(assets_arrays.destination),
+        decorators: {
+            tile: {
+                tree1: new WebGLObject(assets_arrays.tree1),
+                tree2: new WebGLObject(assets_arrays.tree2),
+            },
+        },
+    };
 
-  // Create buffer information from the agent and obstacle data
-  agentsBufferInfo = twgl.createBufferInfoFromArrays(gl, agentArrays);
-  obstaclesBufferInfo = twgl.createBufferInfoFromArrays(gl, obstacleArrays);
+    // Set up the user interface
+    setupUI();
 
-  // Create vertex array objects (VAOs) from the buffer information
-  agentsVao = twgl.createVAOFromBufferInfo(gl, programInfo, agentsBufferInfo);
-  obstaclesVao = twgl.createVAOFromBufferInfo(gl, programInfo, obstaclesBufferInfo);
+    // Initialize the agents model
+    await initAgentsModel();
 
-  // Set up the user interface
-  setupUI();
+    // Get the agents and map_tiles
+    await getAgents();
+    await getMap();
 
-  // Initialize the agents model
-  await initAgentsModel();
-
-  // Get the agents and obstacles
-  await getAgents();
-  await getObstacles();
-
-  // Draw the scene
-  await drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo);
+    // Draw the scene
+    await drawScene(gl, programInfo, agent_WebGL, map_WebGL);
 }
 
 /*
  * Initializes the agents model by sending a POST request to the agent server.
  */
 async function initAgentsModel() {
-  try {
-    // Send a POST request to the agent server to initialize the model
-    let response = await fetch(agent_server_uri + "init")
+    try {
+        // Send a POST request to the agent server to initialize the model
+        let response = await fetch(agent_server_uri + "init")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON and log the message
-      let result = await response.json()
-      console.log(result.message)
-      data.width = result.width;
-      data.height = result.height;
+        // Check if the response was successful
+        if (response.ok) {
+           // Parse the response as JSON and log the message
+           let result = await response.json()
+           console.log(result.message)
+           data.width = result.width;
+           data.height = result.height;
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
  * Retrieves the current positions of all agents from the agent server.
  */
 async function getAgents() {
-  try {
-    // Send a GET request to the agent server to retrieve the agent positions
-    let response = await fetch(agent_server_uri + "getAgents")
+    try {
+        // Send a GET request to the agent server to retrieve the agent positions
+        let response = await fetch(agent_server_uri + "getAgents")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON
-      let result = await response.json()
+        // Check if the response was successful
+        if (response.ok) {
+            // Parse the response as JSON
+            let result = await response.json()
 
-      // Log the agent positions
-      console.log(result.positions)
+            // Log the agent positions
+            console.log(result.positions)
 
-      // Check if the agents array is empty
-      if(agents.length == 0){
-        // Create new agents and add them to the agents array
-        for (const agent of result.positions) {
-          const newAgent = new Object3D(agent.id, [agent.x, agent.y, agent.z])
-          agents.push(newAgent)
+            // Check if the agents array is empty
+            if (agents.length == 0) {
+                // Create new agents and add them to the agents array
+                for (const agent of result.positions) {
+                    const newAgent = new Object3D(
+                        agent.id, [agent.x, agent.y, agent.z]
+                    );
+                    agents.push(newAgent)
+                }
+                // Log the agents array
+                console.log("Agents:", agents)
+            } else {
+                // Update the positions of existing agents
+                for (const agent of result.positions) {
+                    const current_agent = agents.find(
+                        (object3d) => object3d.id == agent.id
+                    );
+
+                    // Check if the agent exists in the agents array
+                    if(current_agent != undefined){
+                        // Update the agent's position
+                        current_agent.position = [agent.x, agent.y, agent.z]
+                    }
+                }
+            }
         }
-        // Log the agents array
-        console.log("Agents:", agents)
 
-      } else {
-        // Update the positions of existing agents
-        for (const agent of result.positions) {
-          const current_agent = agents.find((object3d) => object3d.id == agent.id)
-
-          // Check if the agent exists in the agents array
-          if(current_agent != undefined){
-            // Update the agent's position
-            current_agent.position = [agent.x, agent.y, agent.z]
-          }
-        }
-      }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
- * Retrieves the current positions of all obstacles from the agent server.
+ * Retrieves the current positions of all map_tiles from the agent server.
  */
-async function getObstacles() {
-  try {
-    // Send a GET request to the agent server to retrieve the obstacle positions
-    let response = await fetch(agent_server_uri + "getObstacles")
+async function getMap() {
+    try {
+        // Send a GET request to the agent server to retrieve the
+        // map_tile positions
+        let response = await fetch(agent_server_uri + "getMap")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Parse the response as JSON
-      let result = await response.json()
+        // Check if the response was successful
+        if (response.ok) {
+            // Parse the response as JSON
+            let result = await response.json()
 
-      // Create new obstacles and add them to the obstacles array
-      for (const obstacle of result.positions) {
-        const newObstacle = new Object3D(obstacle.id, [obstacle.x, obstacle.y, obstacle.z])
-        obstacles.push(newObstacle)
-      }
-      // Log the obstacles array
-      console.log("Obstacles:", obstacles)
+            // Create new map_tiles and add them to the map_tiles array
+            console.log("Got Map:", result.map);
+            for (const tile_type in result.map) {
+                map_tiles[tile_type] = result.map[tile_type].map(
+                    tile => new Object3D(tile.id, [tile.x, tile.y, tile.z])
+                );
+            }
+            map_tiles.obstacles.map(
+                obstacle => {
+                    if (Math.random() < 0.5) {
+                        obstacle.decorator = "tree1";
+                    } else {
+                        obstacle.decorator = "tree2";
+                    }
+                }
+            );
+            // Log the map_tiles array
+            console.log("Map:", map_tiles)
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
  * Updates the agent positions by sending a request to the agent server.
  */
 async function update() {
-  try {
-    // Send a request to the agent server to update the agent positions
-    let response = await fetch(agent_server_uri + "update")
+    try {
+        // Send a request to the agent server to update the agent positions
+        let response = await fetch(agent_server_uri + "update")
 
-    // Check if the response was successful
-    if(response.ok){
-      // Retrieve the updated agent positions
-      await getAgents()
-      // Log a message indicating that the agents have been updated
-      console.log("Updated agents")
+        // Check if the response was successful
+        if (response.ok) {
+            // Retrieve the updated agent positions
+            await getAgents()
+            // Log a message indicating that the agents have been updated
+            console.log("Updated agents")
+        }
+    } catch (error) {
+        // Log any errors that occur during the request
+        console.log(error)
     }
-
-  } catch (error) {
-    // Log any errors that occur during the request
-    console.log(error)
-  }
 }
 
 /*
- * Draws the scene by rendering the agents and obstacles.
+ * Draws the scene by rendering the agents and map_tiles.
  *
  * @param {WebGLRenderingContext} gl - The WebGL rendering context.
  * @param {Object} programInfo - The program information.
  * @param {WebGLVertexArrayObject} agentsVao - The vertex array object for agents.
  * @param {Object} agentsBufferInfo - The buffer information for agents.
- * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
- * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
+ * @param {WebGLVertexArrayObject} map_tilesVao - The vertex array object for map_tiles.
+ * @param {Object} map_tilesBufferInfo - The buffer information for map_tiles.
  */
-async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo) {
+async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
     // Resize the canvas to match the display size
     twgl.resizeCanvasToDisplaySize(gl.canvas);
 
@@ -282,22 +293,48 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
     // Set the distance for rendering
     const distance = 1
 
+    // Global uniforms
+    const v3_lightPosition = twgl.v3.create(
+        settings.light.position.x,
+        settings.light.position.y,
+        settings.light.position.z,
+    );
+    const v3_cameraPosition = twgl.v3.create(
+        settings.camera.position.x,
+        settings.camera.position.y,
+        settings.camera.position.z,
+    );
+
+    const globalUniforms = {
+        u_viewWorldPosition: v3_cameraPosition,
+        u_lightWorldPosition: v3_lightPosition,
+        u_ambientLight: settings.light.color.ambient,
+        u_diffuseLight: settings.light.color.diffuse,
+        u_specularLight: settings.light.color.specular,
+    };
+
+    twgl.setUniforms(programInfo, globalUniforms);
+
     // Draw the agents
-    drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix)
-    // Draw the obstacles
-    drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix)
+    drawAgents(distance, agent_WebGL, viewProjectionMatrix);
+    // Draw the map_tiles
+    drawMap(distance, map_WebGL, viewProjectionMatrix);
 
     // Increment the frame count
     frameCount++
 
     // Update the scene every 30 frames
-    if(frameCount%30 == 0){
-      frameCount = 0
-      await update()
+    if (frameCount % 30 == 0) {
+        frameCount = 0
+        await update()
     }
 
     // Request the next frame
-    requestAnimationFrame(()=>drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstaclesVao, obstaclesBufferInfo))
+    requestAnimationFrame(
+        () => drawScene(
+            gl, programInfo, agent_WebGL, map_WebGL
+        )
+    );
 }
 
 /*
@@ -308,71 +345,158 @@ async function drawScene(gl, programInfo, agentsVao, agentsBufferInfo, obstacles
  * @param {Object} agentsBufferInfo - The buffer information for agents.
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
-function drawAgents(distance, agentsVao, agentsBufferInfo, viewProjectionMatrix){
-    // Bind the vertex array object for agents
-    gl.bindVertexArray(agentsVao);
-
+function drawAgents(
+    distance, agent_WebGL, viewProjectionMatrix
+) {
     // Iterate over the agents
-    for(const agent of agents){
+    for (const agent of agents) {
+        // Draw the bike frame
+        // Bind the vertex array object for bike_frame
+        gl.bindVertexArray(agent_WebGL.frame.vao);
 
-      // Create the agent's transformation matrix
-      const cube_trans = twgl.v3.create(...agent.position);
-      const cube_scale = twgl.v3.create(...agent.scale);
+        // Create the agent's transformation matrix
+        const agent_trans = twgl.v3.add(
+            twgl.v3.create(...agent.position), twgl.v3.create(0, 0.25, 0)
+        );
+        const agent_scale = twgl.v3.create(...agent.scale);
 
-      // Calculate the agent's matrix
-      agent.matrix = twgl.m4.translate(viewProjectionMatrix, cube_trans);
-      agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
-      agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
-      agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
-      agent.matrix = twgl.m4.scale(agent.matrix, cube_scale);
+        // Calculate the agent's matrix
+        agent.matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
+        agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
+        agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
+        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
+        agent.matrix = twgl.m4.scale(agent.matrix, agent_scale);
 
-      // Set the uniforms for the agent
-      let uniforms = {
-          u_matrix: agent.matrix,
-      }
+        const agent_worldViewProjection = twgl.m4.multiply(
+            viewProjectionMatrix, agent.matrix
+        );
 
-      // Set the uniforms and draw the agent
-      twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(gl, agentsBufferInfo);
+        // Set the uniforms for the agent bike_frame
+        let uniforms = {
+            u_world: agent.matrix,
+            u_worldInverseTransform: twgl.m4.identity(),
+            u_worldViewProjection: agent_worldViewProjection,
+        }
 
+        // Set the uniforms and draw the agent
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, agent_WebGL.frame.buffer_info);
+
+        // Draw the wheels
+        // Bind the vertex array object for bike_wheel
+        gl.bindVertexArray(agent_WebGL.wheel.vao);
+
+        for (let i = 0; i < 2; i++) {
+            // Create the wheel's transformation matrix
+            let wheel_trans = twgl.v3.create(0, 0, 0.5);
+            if (i == 1) {
+                wheel_trans = twgl.v3.negate(wheel_trans);
+            };
+
+            // Calculate the wheel's matrix
+            let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
+            wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
+            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
+            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent.rotation[1]);
+            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
+            wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
+
+            const wheel_worldViewProjection = twgl.m4.multiply(
+                viewProjectionMatrix, wheel_matrix
+            );
+
+            let wheel_uniforms = {
+                u_world: wheel_matrix,
+                u_worldInverseTransform: twgl.m4.identity(),
+                u_worldViewProjection: wheel_worldViewProjection,
+            };
+
+            // Set the uniforms and draw the wheel
+            twgl.setUniforms(programInfo, wheel_uniforms);
+            twgl.drawBufferInfo(gl, agent_WebGL.wheel.buffer_info);
+        }
     }
 }
 
 
 /*
- * Draws the obstacles.
+ * Draws the map_tiles.
  *
  * @param {Number} distance - The distance for rendering.
- * @param {WebGLVertexArrayObject} obstaclesVao - The vertex array object for obstacles.
- * @param {Object} obstaclesBufferInfo - The buffer information for obstacles.
+ * @param {WebGLVertexArrayObject} map_tilesVao - The vertex array object for map_tiles.
+ * @param {Object} map_tilesBufferInfo - The buffer information for map_tiles.
  * @param {Float32Array} viewProjectionMatrix - The view-projection matrix.
  */
-function drawObstacles(distance, obstaclesVao, obstaclesBufferInfo, viewProjectionMatrix){
-    // Bind the vertex array object for obstacles
-    gl.bindVertexArray(obstaclesVao);
+function drawMap(distance, map_WebGL, viewProjectionMatrix) {
+    // Iterate over the map_tiles
+    for (const tile_type in map_tiles) {
+        let model;
+        switch (tile_type) {
+            case "obstacles":
+                model = map_WebGL.tiles.grass;
+                break;
+            case "roads":
+                model = map_WebGL.tiles.road;
+                break;
+            case "traffic_lights":
+                model = map_WebGL.traffic_light;
+                break;
+            case "destinations":
+                model = map_WebGL.destination;
+                break;
+        }
 
-    // Iterate over the obstacles
-    for(const obstacle of obstacles){
-      // Create the obstacle's transformation matrix
-      const cube_trans = twgl.v3.create(...obstacle.position);
-      const cube_scale = twgl.v3.create(...obstacle.scale);
+        let tile_decorators = map_WebGL.decorators.tile;
 
-      // Calculate the obstacle's matrix
-      obstacle.matrix = twgl.m4.translate(viewProjectionMatrix, cube_trans);
-      obstacle.matrix = twgl.m4.rotateX(obstacle.matrix, obstacle.rotation[0]);
-      obstacle.matrix = twgl.m4.rotateY(obstacle.matrix, obstacle.rotation[1]);
-      obstacle.matrix = twgl.m4.rotateZ(obstacle.matrix, obstacle.rotation[2]);
-      obstacle.matrix = twgl.m4.scale(obstacle.matrix, cube_scale);
+        for (const tile of map_tiles[tile_type]) {
+            // Create the map_tile's transformation matrix
+            const tile_trans = twgl.v3.create(...tile.position);
+            const tile_scale = twgl.v3.create(...tile.scale);
 
-      // Set the uniforms for the obstacle
-      let uniforms = {
-          u_matrix: obstacle.matrix,
-      }
+            // Calculate the tile's matrix
+            tile.matrix = twgl.m4.translate(
+                twgl.m4.identity(), tile_trans
+            );
+            tile.matrix = twgl.m4.rotateX(
+                tile.matrix, tile.rotation[0]
+            );
+            tile.matrix = twgl.m4.rotateY(
+                tile.matrix, tile.rotation[1]
+            );
+            tile.matrix = twgl.m4.rotateZ(
+                tile.matrix, tile.rotation[2]
+            );
+            tile.matrix = twgl.m4.scale(tile.matrix, tile_scale);
 
-      // Set the uniforms and draw the obstacle
-      twgl.setUniforms(programInfo, uniforms);
-      twgl.drawBufferInfo(gl, obstaclesBufferInfo);
+            const tile_worldViewProjection = twgl.m4.multiply(
+                viewProjectionMatrix, tile.matrix
+            );
 
+            // Set the uniforms for the tile
+            let uniforms = {
+                u_world: tile.matrix,
+                u_worldInverseTransform: twgl.m4.identity(),
+                u_worldViewProjection: tile_worldViewProjection,
+            }
+
+            // Bind the vertex array object for tiles
+            gl.bindVertexArray(model.vao);
+            // Set the uniforms and draw the tile
+            twgl.setUniforms(programInfo, uniforms);
+            twgl.drawBufferInfo(gl, model.buffer_info);
+
+            if (tile_type == "obstacles" && !map_tiles.destinations.find(
+                    destination => destination.position.every(
+                        (pos, index) => pos == tile.position[index]
+                    )
+                )
+            ) {
+                gl.bindVertexArray(tile_decorators[tile.decorator].vao);
+                twgl.drawBufferInfo(
+                    gl, tile_decorators[tile.decorator].buffer_info
+                );
+            };
+        }
     }
 }
 
@@ -393,7 +517,7 @@ function setupWorldView(gl) {
     const projectionMatrix = twgl.m4.perspective(fov, aspect, 1, 200);
 
     // Set the target position
-    const target = [data.width/2, 0, data.height/2];
+    const target = [data.width / 2, 0, data.height / 2];
 
     // Set the up vector
     const up = [0, 1, 0];
@@ -479,194 +603,6 @@ function setupUI() {
             // Update the camera distance when the slider value changes
             settings.camera.scale.r = value
         });
-}
-
-function generateData(size) {
-    let arrays =
-    {
-        a_position: {
-                numComponents: 3,
-                data: [
-                  // Front Face
-                  -0.5, -0.5,  0.5,
-                  0.5, -0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-
-                 // Back face
-                 -0.5, -0.5, -0.5,
-                 -0.5,  0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5, -0.5, -0.5,
-
-                 // Top face
-                 -0.5,  0.5, -0.5,
-                 -0.5,  0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                  0.5,  0.5, -0.5,
-
-                 // Bottom face
-                 -0.5, -0.5, -0.5,
-                  0.5, -0.5, -0.5,
-                  0.5, -0.5,  0.5,
-                 -0.5, -0.5,  0.5,
-
-                 // Right face
-                  0.5, -0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5,  0.5,  0.5,
-                  0.5, -0.5,  0.5,
-
-                 // Left face
-                 -0.5, -0.5, -0.5,
-                 -0.5, -0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-                 -0.5,  0.5, -0.5
-                ].map(e => size * e)
-            },
-        a_color: {
-                numComponents: 4,
-                data: [
-                  // Front face
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                    1, 0, 0, 1, // v_1
-                  // Back Face
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                    0, 1, 0, 1, // v_2
-                  // Top Face
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                    0, 0, 1, 1, // v_3
-                  // Bottom Face
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                    1, 1, 0, 1, // v_4
-                  // Right Face
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                    0, 1, 1, 1, // v_5
-                  // Left Face
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                    1, 0, 1, 1, // v_6
-                ]
-            },
-        indices: {
-                numComponents: 3,
-                data: [
-                  0, 1, 2,      0, 2, 3,    // Front face
-                  4, 5, 6,      4, 6, 7,    // Back face
-                  8, 9, 10,     8, 10, 11,  // Top face
-                  12, 13, 14,   12, 14, 15, // Bottom face
-                  16, 17, 18,   16, 18, 19, // Right face
-                  20, 21, 22,   20, 22, 23  // Left face
-                ]
-            }
-    };
-
-    return arrays;
-}
-
-function generateObstacleData(size){
-
-    let arrays =
-    {
-        a_position: {
-                numComponents: 3,
-                data: [
-                  // Front Face
-                  -0.5, -0.5,  0.5,
-                  0.5, -0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-
-                 // Back face
-                 -0.5, -0.5, -0.5,
-                 -0.5,  0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5, -0.5, -0.5,
-
-                 // Top face
-                 -0.5,  0.5, -0.5,
-                 -0.5,  0.5,  0.5,
-                  0.5,  0.5,  0.5,
-                  0.5,  0.5, -0.5,
-
-                 // Bottom face
-                 -0.5, -0.5, -0.5,
-                  0.5, -0.5, -0.5,
-                  0.5, -0.5,  0.5,
-                 -0.5, -0.5,  0.5,
-
-                 // Right face
-                  0.5, -0.5, -0.5,
-                  0.5,  0.5, -0.5,
-                  0.5,  0.5,  0.5,
-                  0.5, -0.5,  0.5,
-
-                 // Left face
-                 -0.5, -0.5, -0.5,
-                 -0.5, -0.5,  0.5,
-                 -0.5,  0.5,  0.5,
-                 -0.5,  0.5, -0.5
-                ].map(e => size * e)
-            },
-        a_color: {
-                numComponents: 4,
-                data: [
-                  // Front face
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                    0, 0, 0, 1, // v_1
-                  // Back Face
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                    0.333, 0.333, 0.333, 1, // v_2
-                  // Top Face
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                    0.5, 0.5, 0.5, 1, // v_3
-                  // Bottom Face
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                    0.666, 0.666, 0.666, 1, // v_4
-                  // Right Face
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                    0.833, 0.833, 0.833, 1, // v_5
-                  // Left Face
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                    1, 1, 1, 1, // v_6
-                ]
-            },
-        indices: {
-                numComponents: 3,
-                data: [
-                  0, 1, 2,      0, 2, 3,    // Front face
-                  4, 5, 6,      4, 6, 7,    // Back face
-                  8, 9, 10,     8, 10, 11,  // Top face
-                  12, 13, 14,   12, 14, 15, // Bottom face
-                  16, 17, 18,   16, 18, 19, // Right face
-                  20, 21, 22,   20, 22, 23  // Left face
-                ]
-            }
-    };
-    return arrays;
 }
 
 main()
