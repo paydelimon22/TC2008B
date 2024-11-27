@@ -19,7 +19,7 @@ class ParkModel(Model):
         self.graph = []
 
         # Load the map file. The map file is a text file where each character represents an agent.
-        with open("park_files/2022_base.txt") as baseFile:
+        with open("park_files/2024_base.txt") as baseFile:
             lines = baseFile.readlines()
             self.width = len(lines[0]) - 1
             self.height = len(lines)
@@ -124,8 +124,6 @@ class ParkModel(Model):
                 break
 
             destination_pos = [destination.pos for destination in self.get_agents_of_type(Destination)]
-            #Had to manually remove this destination as it cannot be reached
-            destination_pos.remove((21,22))
 
             new_bike = Bike(self.next_id(), self, self.random.choice(destination_pos))
             self.grid.place_agent(new_bike, corner)
