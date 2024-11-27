@@ -164,31 +164,17 @@ async function getAgents() {
             // Log the agent positions
             console.log(result.positions)
 
-            // Check if the agents array is empty
-            if (agents.length == 0) {
-                // Create new agents and add them to the agents array
-                for (const agent of result.positions) {
-                    const newAgent = new Object3D(
-                        agent.id, [agent.x, agent.y, agent.z]
-                    );
-                    agents.push(newAgent)
-                }
-                // Log the agents array
-                console.log("Agents:", agents)
-            } else {
-                // Update the positions of existing agents
-                for (const agent of result.positions) {
-                    const current_agent = agents.find(
-                        (object3d) => object3d.id == agent.id
-                    );
+            // Create new agents and add them to the agents array
+            agents.length = 0;
 
-                    // Check if the agent exists in the agents array
-                    if(current_agent != undefined){
-                        // Update the agent's position
-                        current_agent.position = [agent.x, agent.y, agent.z]
-                    }
-                }
+            for (const agent of result.positions) {
+                const newAgent = new Object3D(
+                    agent.id, [agent.x, agent.y, agent.z]
+                );
+                agents.push(newAgent)
             }
+            // Log the agents array
+            console.log("Agents:", agents)
         }
 
     } catch (error) {
