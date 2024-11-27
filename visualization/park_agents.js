@@ -38,9 +38,9 @@ class WebGLObject {
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
 
-// Initialize arrays to store agents and obstacles
+// Initialize arrays to store agents and map_tiles
 const agents = [];
-const obstacles = [];
+const map_tiles = {};
 
 // Initialize WebGL-related variables
 let gl, programInfo;
@@ -114,9 +114,9 @@ async function main() {
     // Initialize the agents model
     await initAgentsModel();
 
-    // Get the agents and obstacles
+    // Get the agents and map_tiles
     await getAgents();
-    await getObstacles(decorators.tile);
+    await getMap(decorators.tile);
 
     // Draw the scene
     await drawScene(gl, programInfo, bike_agent, tiles.grass, decorators.tile);
@@ -194,33 +194,37 @@ async function getAgents() {
 }
 
 /*
- * Retrieves the current positions of all obstacles from the agent server.
+ * Retrieves the current positions of all map_tiles from the agent server.
  */
-async function getObstacles(decorators_WebGL) {
+async function getMap(decorators_WebGL) {
     try {
         // Send a GET request to the agent server to retrieve the
-        // obstacle positions
-        let response = await fetch(agent_server_uri + "getObstacles")
+        // map_tile positions
+        let response = await fetch(agent_server_uri + "getMap")
 
         // Check if the response was successful
         if (response.ok) {
             // Parse the response as JSON
             let result = await response.json()
 
-            // Create new obstacles and add them to the obstacles array
-            for (const obstacle of result.positions) {
-                const newObstacle = new Object3D(
-                    obstacle.id, [obstacle.x, obstacle.y, obstacle.z]
+            // Create new map_tiles and add them to the map_tiles array
+            console.log("Got Map:", result.map);
+            for (const tile_type in result.map) {
+                map_tiles[tile_type] = result.map[tile_type].map(
+                    tile => new Object3D(tile.id, [tile.x, tile.y, tile.z])
                 );
-                if (Math.random() < 0.5) {
-                    newObstacle.decorator = "tree1";
-                } else {
-                    newObstacle.decorator = "tree2";
-                }
-                obstacles.push(newObstacle)
             }
-            // Log the obstacles array
-            console.log("Obstacles:", obstacles)
+            map_tiles.obstacles.map(
+                obstacle => {
+                    if (Math.random() < 0.5) {
+                        obstacle.decorator = "tree1";
+                    } else {
+                        obstacle.decorator = "tree2";
+                    }
+                }
+            );
+            // Log the map_tiles array
+            console.log("Map:", map_tiles)
         }
     } catch (error) {
         // Log any errors that occur during the request
