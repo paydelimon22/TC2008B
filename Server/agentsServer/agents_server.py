@@ -100,6 +100,7 @@ def getObstacles():
                     elif isinstance(a, Road):
                         map_tiles["roads"].append(agent_info)
                     elif isinstance(a, Traffic_Light):
+                        agent_info["direction"] = a.direction
                         map_tiles["traffic_lights"].append(agent_info)
                     elif isinstance(a, Destination):
                         map_tiles["destinations"].append(agent_info)

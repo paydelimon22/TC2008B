@@ -218,6 +218,22 @@ async function getMap() {
                     tile => new Object3D(tile.id, [tile.x, tile.y, tile.z])
                 );
             }
+            map_tiles.traffic_lights.map(
+                (traffic_light, index) => {
+                    switch (result.map.traffic_lights[index].direction) {
+                        case "Left":
+                            traffic_light.rotation[1] = Math.PI / 2;
+                            break;
+                        case "Right":
+                            traffic_light.rotation[1] = -Math.PI / 2;
+                            break;
+                        case "Up":
+                            traffic_light.rotation[1] = Math.PI;
+                            break;
+                    }
+                }
+            );
+            console.log("Traffic lights:", map_tiles.traffic_lights);
             map_tiles.obstacles.map(
                 obstacle => {
                     if (Math.random() < 0.5) {
