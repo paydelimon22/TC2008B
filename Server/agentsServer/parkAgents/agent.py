@@ -22,6 +22,7 @@ class Bike(Agent):
         self.destination_neighbors = []
         self.path = []
         self.direction = "Down"
+        self.not_moved_count = 0
         print(f"AGENT {self.unique_id} constructed")
 
     def get_distance(self, pos1, pos2):
@@ -103,35 +104,34 @@ class Bike(Agent):
         """
         Move the agent one cell in it's path
         """
-        if not self.path:
-            self.get_route()
-
-        traffic_light = None
-        cell_agents = self.model.grid.get_cell_list_contents(self.pos)
-        for agent in cell_agents:
-            if isinstance(agent, Traffic_Light):
-                traffic_light = agent
-        
-        if traffic_light and traffic_light.state:
-            print(f"Agent {self.unique_id} is waiting for traffic light to change at pos: {self.pos}")
-            next_step = self.pos
-
         #Check if the first element of the path is empty
         cell_empty = True
         agents_path = self.model.grid.get_cell_list_contents(self.path[0])
         for agent in agents_path:
             if isinstance(agent, Bike):
                 cell_empty = False
+        
+        
+        if cell_empty:
+            next_step = self.path.pop(0)
+            self.not_moved_count = 0
+        elif self.not_moved_count < 5:
+            next_step = self.pos
+            self.not_moved_count += 1
         else:
-            try:
-                if cell_empty:
-                    next_step = self.path.pop(0)
-                else:
-                    next_step = self.pos
-            except Exception as e:
-                # print(traceback.format_exc())
-                # print(e)
-                next_step = self.pos
+            empty_neighbors = [
+                neighbor for neighbor in
+                self.model.graph_get(self.pos)
+                if not isinstance(neighbor,Bike)
+            ]
+
+            next_step = self.pos
+            self.not_moved_count += 1
+            for neighbor in empty_neighbors:
+                if len(self.path) >= 1 and self.path[1] in self.model.graph_get(neighbor.pos):
+                    next_step = neighbor.pos
+                    self.not_moved_count = 0
+                    self.path.pop(0)
         
         self.model.grid.move_agent(self, next_step)
         self.direction = next(filter(
@@ -143,14 +143,30 @@ class Bike(Agent):
         """
         Determines the new direction it will take, and then moves
         """
+        #Generate a path if it does not exist
+        if not self.path:
+            self.get_route()
 
-        #When the agent reaches it's destination, delete
-        if self.pos in self.destination_neighbors:
+        #Check if a traffic light exists at that position
+        traffic_light = None
+        cell_agents = self.model.grid.get_cell_list_contents(self.pos)
+
+        for agent in cell_agents:
+            if isinstance(agent, Traffic_Light):
+                traffic_light = agent
+        
+        #If the agent is at a traffic light, wait
+        if traffic_light and traffic_light.state:
+            print(f"Agent {self.unique_id} is waiting for traffic light to change at pos: {self.pos}")
+        
+        #If the agent is at it's destination, delete
+        elif self.pos in self.destination_neighbors:
             print(f"Agent: {self.unique_id} reached its destination!")
             self.model.grid.remove_agent(self)
             self.model.schedule.remove(self)
             self.model.deregister_agent(self)
 
+        #Move
         else:
             self.move()
 

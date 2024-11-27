@@ -159,21 +159,45 @@ class ParkModel(Model):
             if (
                 road.direction == "Up"
                 and neighbor_road.pos[1] == road.pos[1] + 1
+                and not
+                (neighbor_road.direction == "Left"
+                    and neighbor_road.pos[0] > road.pos[0]
+                    or neighbor_road.direction == "Right"
+                    and neighbor_road.pos[0] < road.pos[0]
+                )
             ):
                 possible_roads.append(neighbor_road)
             elif (
                 road.direction == "Down"
                 and neighbor_road.pos[1] == road.pos[1] - 1
+                and not
+                (neighbor_road.direction == "Left"
+                    and neighbor_road.pos[0] > road.pos[0]
+                    or neighbor_road.direction == "Right"
+                    and neighbor_road.pos[0] < road.pos[0]
+                ) 
             ):
                 possible_roads.append(neighbor_road)
             elif (
                 road.direction == "Left"
                 and neighbor_road.pos[0] == road.pos[0] - 1
+                and not
+                (neighbor_road.direction == "Up"
+                    and neighbor_road.pos[1] < road.pos[1]
+                    or neighbor_road.direction == "Down"
+                    and neighbor_road.pos[1] > road.pos[1]
+                )
             ):
                 possible_roads.append(neighbor_road)
             elif (
                 road.direction == "Right"
                 and neighbor_road.pos[0] == road.pos[0] + 1
+                and not
+                (neighbor_road.direction == "Up"
+                    and neighbor_road.pos[1] < road.pos[1]
+                    or neighbor_road.direction == "Down"
+                    and neighbor_road.pos[1] > road.pos[1]
+                )
             ):
                 possible_roads.append(neighbor_road)
         return possible_roads
