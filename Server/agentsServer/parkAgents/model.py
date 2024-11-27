@@ -41,10 +41,11 @@ class ParkModel(Model):
                         if col == "S":
                             for road in [lines[r - 1][c], lines[r + 1][c]]:
                                 if road in ["v", "^"]:
+                                    direction = dataDictionary[road]
                                     agent = Road(
                                         f"r_{r*self.width+c}",
                                         self,
-                                        dataDictionary[road]
+                                        direction
                                     )
                                     self.grid.place_agent(
                                         agent,
@@ -54,10 +55,11 @@ class ParkModel(Model):
                         elif col == "s":
                             for road in [lines[r][c - 1], lines[r][c + 1]]:
                                 if road in [">", "<"]:
+                                    direction = dataDictionary[road]
                                     agent = Road(
                                         f"r_{r*self.width+c}",
                                         self,
-                                        dataDictionary[road]
+                                        direction
                                     )
                                     self.grid.place_agent(
                                         agent,
@@ -67,8 +69,9 @@ class ParkModel(Model):
                         agent = Traffic_Light(
                             f"tl_{r*self.width+c}",
                             self,
-                            False if col == "S" else True,
-                            int(dataDictionary[col]),
+                            direction=direction,
+                            state=False if col == "S" else True,
+                            timeToChange=int(dataDictionary[col]),
                         )
                         self.grid.place_agent(agent, (c, self.height - r - 1))
                         self.schedule.add(agent)

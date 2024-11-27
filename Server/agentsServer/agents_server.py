@@ -58,7 +58,13 @@ def getAgents():
         # The y coordinate is set to 1, since the agents are in a 3D world. The z coordinate corresponds to the row (y coordinate) of the grid in mesa.
         try:
             agentPositions = [
-                {"id": str(a.unique_id), "x": x, "y": 1, "z": z}
+                {
+                    "id": str(a.unique_id),
+                    "x": x,
+                    "y": 1,
+                    "z": z,
+                    "direction": a.direction,
+                }
                 for agents, (x, z) in parkModel.grid.coord_iter()
                 for a in agents
                 if isinstance(a, Bike)
@@ -100,6 +106,7 @@ def getObstacles():
                     elif isinstance(a, Road):
                         map_tiles["roads"].append(agent_info)
                     elif isinstance(a, Traffic_Light):
+                        agent_info["direction"] = a.direction
                         map_tiles["traffic_lights"].append(agent_info)
                     elif isinstance(a, Destination):
                         map_tiles["destinations"].append(agent_info)

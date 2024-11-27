@@ -21,6 +21,7 @@ class Bike(Agent):
         self.destination = destination
         self.destination_neighbors = []
         self.path = []
+        self.direction = "Down"
         print(f"AGENT {self.unique_id} constructed")
 
     def get_distance(self, pos1, pos2):
@@ -133,6 +134,10 @@ class Bike(Agent):
                 next_step = self.pos
         
         self.model.grid.move_agent(self, next_step)
+        self.direction = next(filter(
+            lambda a: isinstance(a, Road),
+            self.model.grid.get_cell_list_contents(self.pos)
+        )).direction
 
     def step(self):
         """
@@ -155,7 +160,8 @@ class Traffic_Light(Agent):
     Traffic light. Where the traffic lights are in the grid.
     """
 
-    def __init__(self, unique_id, model, state=False, timeToChange=10):
+    def __init__(self, unique_id, model,
+                 state=False, direction="Left", timeToChange=10):
         super().__init__(unique_id, model)
         """
         Creates a new Traffic light.
@@ -165,6 +171,7 @@ class Traffic_Light(Agent):
             state: Whether the traffic light is green or red
             timeToChange: After how many step should the traffic light change color 
         """
+        self.direction = direction
         self.state = state
         self.timeToChange = timeToChange
 

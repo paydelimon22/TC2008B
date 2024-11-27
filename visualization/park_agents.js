@@ -171,6 +171,17 @@ async function getAgents() {
                 const newAgent = new Object3D(
                     agent.id, [agent.x, agent.y, agent.z]
                 );
+                switch (agent.direction) {
+                    case "Right":
+                        newAgent.rotation[1] = Math.PI / 2;
+                        break;
+                    case "Left":
+                        newAgent.rotation[1] = -Math.PI / 2;
+                        break;
+                    case "Down":
+                        newAgent.rotation[1] = Math.PI;
+                        break;
+                }
                 agents.push(newAgent)
             }
             // Log the agents array
@@ -204,6 +215,22 @@ async function getMap() {
                     tile => new Object3D(tile.id, [tile.x, tile.y, tile.z])
                 );
             }
+            map_tiles.traffic_lights.map(
+                (traffic_light, index) => {
+                    switch (result.map.traffic_lights[index].direction) {
+                        case "Left":
+                            traffic_light.rotation[1] = Math.PI / 2;
+                            break;
+                        case "Right":
+                            traffic_light.rotation[1] = -Math.PI / 2;
+                            break;
+                        case "Up":
+                            traffic_light.rotation[1] = Math.PI;
+                            break;
+                    }
+                }
+            );
+            console.log("Traffic lights:", map_tiles.traffic_lights);
             map_tiles.obstacles.map(
                 obstacle => {
                     if (Math.random() < 0.5) {
@@ -374,17 +401,19 @@ function drawAgents(
 
         for (let i = 0; i < 2; i++) {
             // Create the wheel's transformation matrix
-            let wheel_trans = twgl.v3.create(0, 0, 0.5);
+            let wheel_trans = twgl.v3.create(0, 0, 0.3);
             if (i == 1) {
                 wheel_trans = twgl.v3.negate(wheel_trans);
             };
+            let wheel_rotation = 0;
 
             // Calculate the wheel's matrix
             let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
-            wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
             wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
             wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent.rotation[1]);
             wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
+            wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
+            wheel_matrix = twgl.m4.rotateX(wheel_matrix, wheel_rotation);
             wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
 
             const wheel_worldViewProjection = twgl.m4.multiply(
