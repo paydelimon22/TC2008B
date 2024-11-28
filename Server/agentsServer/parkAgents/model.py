@@ -160,8 +160,8 @@ class ParkModel(Model):
                     clear = False
                     break
 
-            if  not clear:
-                break
+            if not clear:
+                continue
 
             destination_pos = [destination.pos for destination in self.get_agents_of_type(Destination)]
 
