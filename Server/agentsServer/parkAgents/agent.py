@@ -21,9 +21,6 @@ class Bike(Agent):
         self.destination = destination
         self.destination_neighbors = []
         self.path = []
-        # self.current_road = []
-        # self.next_road = (0,0)
-        # self.alt_road = []
         self.direction = "Down"
         self.not_moved_count = 0
         self.moving = False
