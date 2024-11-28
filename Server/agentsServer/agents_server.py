@@ -128,10 +128,13 @@ def updateModel():
             # Update the model and return a message to WebGL saying that the model was updated successfully
             parkModel.step()
             currentStep += 1
+            if not parkModel.running:
+                print("\033[38;5;9mSIMULATION ENDED!\033[0m")
             return jsonify(
                 {
                     "message": f"Model updated to step {currentStep}.",
                     "currentStep": currentStep,
+                    "running": parkModel.running,
                 }
             )
         except Exception as e:

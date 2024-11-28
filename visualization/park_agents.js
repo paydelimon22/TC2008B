@@ -37,6 +37,7 @@ class WebGLObject {
 
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
+let agent_server_running = true;
 
 // Initialize arrays to store agents and map_tiles
 let agents = [];
@@ -69,11 +70,22 @@ const settings = {
             z: 0,
         },
         color: {
-            ambient: [0.1, 0.1, 0.1, 1.0],
-            diffuse: [1.0, 1.0, 1.0, 1.0],
-            specular: [0.75, 0.75, 0.75, 1.0],
+            running: {
+                ambient: [0.15, 0.15, 0.1, 1.0],
+                diffuse: [1.0, 1.0, 1.0, 1.0],
+                specular: [0.75, 0.75, 0.55, 1.0],
+            },
+            stopped: {
+                ambient: [0.1, 0.1, 0.4, 1.0],
+                diffuse: [1.0, 1.0, 1.0, 1.0],
+                specular: [0.75, 0.75, 0.95, 1.0],
+            },
         },
     },
+    background: {
+        running: [0.25, 0.5, 0.8, 1],
+        stopped: [0.033, 0.046, 0.251, 1],
+    }
 };
 
 // Initialize the frame count
@@ -144,6 +156,8 @@ async function initAgentsModel() {
            console.log(result.message)
            data.width = result.width;
            data.height = result.height;
+           light.position.x = data.width;
+           light.position.z = data.height;
         }
     } catch (error) {
         // Log any errors that occur during the request
@@ -317,6 +331,15 @@ async function update() {
         // Check if the response was successful
         if (response.ok) {
             // Retrieve the updated agent positions
+            let result = await response.json();
+
+            if (!result.running) {
+                agent_server_running = false;
+                console.error("SIMULATION ENDED!",
+                              "No more updates will be requested.");
+                return
+            }
+
             await getAgents()
             // Log a message indicating that the agents have been updated
             console.log("Updated agents")
@@ -345,7 +368,11 @@ async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
     // Set the clear color and enable depth testing
-    gl.clearColor(0.2, 0.2, 0.2, 1);
+    if (agent_server_running) {
+        gl.clearColor(...settings.background.running);
+    } else {
+        gl.clearColor(...settings.background.stopped);
+    }
     gl.enable(gl.DEPTH_TEST);
 
     // Clear the color and depth buffers
@@ -375,12 +402,19 @@ async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
         settings.camera.position.z,
     );
 
+    let light_colors;
+    if (agent_server_running) {
+        light_colors = settings.light.color.running;
+    } else {
+        light_colors = settings.light.color.stopped;
+    }
+
     const globalUniforms = {
         u_viewWorldPosition: v3_cameraPosition,
         u_lightWorldPosition: v3_lightPosition,
-        u_ambientLight: settings.light.color.ambient,
-        u_diffuseLight: settings.light.color.diffuse,
-        u_specularLight: settings.light.color.specular,
+        u_ambientLight: light_colors.ambient,
+        u_diffuseLight: light_colors.diffuse,
+        u_specularLight: light_colors.specular,
     };
 
     twgl.setUniforms(programInfo, globalUniforms);
@@ -394,9 +428,9 @@ async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
     frameCount++
 
     // Update the scene every 30 frames
-    if (frameCount % 30 == 0) {
-        frameCount = 0
-        await update()
+    if (agent_server_running && frameCount % 30 == 0) {
+        frameCount = 0;
+        await update();
     }
 
     // Request the next frame
