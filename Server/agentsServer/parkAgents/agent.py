@@ -22,7 +22,7 @@ class Bike(Agent):
         self.destination_neighbors = []
         self.path = []
         self.direction = "Down"
-        self.not_moved_count = 0
+        self.impatience = 0
         self.moving = False
 
     def get_distance(self, pos1, pos2):
@@ -35,8 +35,9 @@ class Bike(Agent):
         """
         Method to find the route to the destination using A*
         """
-        #Clear path before recalculating
-        self.path.clear()
+        avoid = None
+        if self.path:
+            avoid = self.path[0]
 
         #Define list with neighbor cells of the destination that are roads
         destination_neighborhood = self.model.grid.get_neighborhood(self.destination, moore=True, include_center = False)
@@ -52,6 +53,7 @@ class Bike(Agent):
         
         open_list = [(0, self.pos)]
         closed_list = set()
+        closed_list.add(avoid)
 
         #Dictionary to store parents 
         came_from = {}
@@ -105,51 +107,71 @@ class Bike(Agent):
         Move the agent one cell in it's path
         """
         #Check if the first element of the path is empty
-        self.moving = False
+        # print(f"---------BIKE: {self.unique_id}, PATH: {self.path}, DESTINATION: {self.destination}-----------")
+        
+        #Find empty available neighbors
+        empty_neighbors = []
 
-        cell_empty = True
+        neighbors_list = [neighbor.pos for neighbor in self.model.graph_get(self.pos)]
+        
+        for neighbor in neighbors_list:
+            bikes_found = [agent for agent in self.model.grid.get_cell_list_contents(neighbor) if isinstance(agent, Bike)]
+            if len(bikes_found) == 0:
+                empty_neighbors.append(neighbor)
 
-        agents_path = self.model.grid.get_cell_list_contents(self.path[0])
-        for agent in agents_path:
-            if isinstance(agent, Bike):
-                cell_empty = False
+        #If there are no available steps, wait
+        if not empty_neighbors:
+            self.moving = False
+            self.impatience += 1
+            #print(f"CASE 0: Bike {self.unique_id} waited at {self.pos} because there are no available neighbors")
+            return
         
         #Try moving to the first road in path
-        if cell_empty:
-            next_step = self.path.pop(0)
-            print(f"Bike {self.unique_id} moved from {self.pos} towards {next_step} following it's path")
-
-        else:
-            #Find empty available neighbors
-            empty_neighbors = []
-
-            neighbors_list = [neighbor.pos for neighbor in self.model.graph_get(self.pos)]
+        if self.path[0] in empty_neighbors:
+            self.impatience = 0
+            self.moving = True
             
-            for neighbor in neighbors_list:
-                bikes_found = [agent for agent in self.model.grid.get_cell_list_contents(neighbor) if isinstance(agent, Bike)]
-                if len(bikes_found) == 0:
-                    empty_neighbors.append(neighbor)
-
-            #By default, the next step will be the current pos
-            next_step = self.pos
-            self.not_moved_count += 1
-
-            #For each of the possible empty neighbors,
-            #find the neighbor that can reach the next road in the path
-            for neighbor in empty_neighbors:
-                if len(self.path) > 1 and self.path[1] in [neighbor for neighbor in self.model.graph_get(neighbor)]:
-                    next_step = neighbor
-                    print(f"Bike {self.unique_id} moved towards {next_step} by choosing an empty neighbor that stays on track")
-                    self.path.pop(0)
-                    self.moving = True
-                    break
+            self.model.grid.move_agent(self, self.path.pop(0))
+            self.direction = next(filter(
+                lambda a: isinstance(a, Road),
+                self.model.grid.get_cell_list_contents(self.pos)
+            )).direction
+            #print(f"CASE 1: Bike {self.unique_id} moved along it's path")
+            return
         
-        #Move towards next step and determine new direction
-        self.model.grid.move_agent(self, next_step)
-        self.direction = next(filter(
-            lambda a: isinstance(a, Road),
-            self.model.grid.get_cell_list_contents(self.pos)
-        )).direction
+        if len(self.path) == 1:
+            self.moving = False
+            self.impatience += 1
+            #print(f"CASE 2: Bike {self.unique_id} is once step away from it's destination and waited at: {self.pos}")
+            return
+
+        #For each of the possible empty neighbors,
+        #find the neighbor that can reach the next road in the path
+        for neighbor in empty_neighbors:
+            if self.path[1] in [neighbor.pos for neighbor in self.model.graph_get(neighbor)]:
+                self.impatience = 0
+                self.path.pop(0)
+                self.moving = True
+
+                self.model.grid.move_agent(self, neighbor)
+                self.direction = next(filter(
+                    lambda a: isinstance(a, Road),
+                    self.model.grid.get_cell_list_contents(self.pos)
+                )).direction
+                #print(f"CASE 3: Bike {self.unique_id} moved towards {neighbor} by choosing an empty neighbor that stays on track")
+                return
+                 
+        if self.impatience >= 2:
+            print(f"CASE 4: Bike {self.unique_id} is recalculating it's route after becoming impatient")
+            self.impatience = 0
+            self.get_route()
+            self.move()
+            return
+        
+        self.moving = False
+        self.impatience += 1
+        #print(f"CASE 5: Bike {self.unique_id} is being patient")
+
 
     def step(self):
         """
