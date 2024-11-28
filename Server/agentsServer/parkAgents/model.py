@@ -148,7 +148,12 @@ class ParkModel(Model):
 
         self.schedule.step()
 
-        print(f"BIKES SPAWNED: {self.bikes_spawned}, \nIN MAP: {self.bikes_in_model}, \nARRIVED: {self.bikes_arrived}, {self.ratio_arrived}, \nMOVING: {self.bikes_moving}, \nSTOPPED: {self.bikes_stopped}")
+        print(f"\033[38;5;197mSTEPS:\033[0m {self.schedule.steps}\n"
+              f"\033[38;5;27mBIKES SPAWNED:\033[0m {self.bikes_spawned}\n"
+              f"\033[38;5;33mIN MAP:\033[0m {self.bikes_in_model}\n"
+              f"\033[38;5;40mARRIVED:\033[0m {self.bikes_arrived} ({round(self.ratio_arrived, 2)})\n"
+              f"\033[38;5;214mMOVING:\033[0m {self.bikes_moving}\n"
+              f"\033[38;5;202mSTOPPED:\033[0m {self.bikes_stopped}")
 
     def spawn_bikes(self):
         """Spawn new bikes at the empty corners of the grid."""
