@@ -37,6 +37,7 @@ class WebGLObject {
 
 // Define the agent server URI
 const agent_server_uri = "http://localhost:8585/";
+let agent_server_running = true;
 
 // Initialize arrays to store agents and map_tiles
 let agents = [];
@@ -317,6 +318,15 @@ async function update() {
         // Check if the response was successful
         if (response.ok) {
             // Retrieve the updated agent positions
+            let result = await response.json();
+
+            if (!result.running) {
+                agent_server_running = false;
+                console.error("SIMULATION ENDED!",
+                              "No more updates will be requested.");
+                return
+            }
+
             await getAgents()
             // Log a message indicating that the agents have been updated
             console.log("Updated agents")
@@ -394,9 +404,9 @@ async function drawScene(gl, programInfo, agent_WebGL, map_WebGL) {
     frameCount++
 
     // Update the scene every 30 frames
-    if (frameCount % 30 == 0) {
-        frameCount = 0
-        await update()
+    if (agent_server_running && frameCount % 30 == 0) {
+        frameCount = 0;
+        await update();
     }
 
     // Request the next frame

@@ -114,8 +114,6 @@ class ParkModel(Model):
                         agent = Destination(f"d_{r*self.width+c}", self)
                         self.grid.place_agent(agent, (c, self.height - r - 1))
 
-        self.spawn_bikes()
-
         self.running = True
 
         self.generate_graph()
@@ -123,8 +121,16 @@ class ParkModel(Model):
     def step(self):
         """Advance the model by one step."""
         # Spawn new bikes every 10 episodes
-        if self.schedule.steps % 2 == 0:
+        if self.schedule.steps % 1 == 0:
+            try:
+                before_spawn = len(self.agents_by_type[Bike])
+            except KeyError:
+                before_spawn = 0
+
             self.spawn_bikes()
+            if len(self.agents_by_type[Bike]) == before_spawn:
+                self.running = False
+                return
 
         if len(self.agents_by_type[Bike]) == len(self.agents_by_type[Road]):
             self.running = False
