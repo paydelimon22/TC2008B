@@ -23,7 +23,7 @@ class Bike(Agent):
         self.path = []
         self.direction = "Down"
         self.not_moved_count = 0
-        print(f"AGENT {self.unique_id} constructed")
+        self.moving = False
 
     def get_distance(self, pos1, pos2):
         """
@@ -105,19 +105,18 @@ class Bike(Agent):
         Move the agent one cell in it's path
         """
         #Check if the first element of the path is empty
+        self.moving = False
+
         cell_empty = True
         agents_path = self.model.grid.get_cell_list_contents(self.path[0])
         for agent in agents_path:
             if isinstance(agent, Bike):
                 cell_empty = False
         
-        
         if cell_empty:
             next_step = self.path.pop(0)
             self.not_moved_count = 0
-        elif self.not_moved_count < 5:
-            next_step = self.pos
-            self.not_moved_count += 1
+            self.moving =True
         else:
             empty_neighbors = [
                 neighbor for neighbor in
@@ -128,10 +127,12 @@ class Bike(Agent):
             next_step = self.pos
             self.not_moved_count += 1
             for neighbor in empty_neighbors:
-                if len(self.path) >= 1 and self.path[1] in self.model.graph_get(neighbor.pos):
+                if len(self.path) > 1 and self.path[1] in [neighbor.pos for neighbor in self.model.graph_get(neighbor.pos)]:
                     next_step = neighbor.pos
                     self.not_moved_count = 0
                     self.path.pop(0)
+                    self.moving = True
+                    break
         
         self.model.grid.move_agent(self, next_step)
         self.direction = next(filter(
@@ -157,11 +158,12 @@ class Bike(Agent):
         
         #If the agent is at a traffic light, wait
         if traffic_light and traffic_light.state:
-            print(f"Agent {self.unique_id} is waiting for traffic light to change at pos: {self.pos}")
-        
+            pass
+
         #If the agent is at it's destination, delete
         elif self.pos in self.destination_neighbors:
-            print(f"Agent: {self.unique_id} reached its destination!")
+            #print(f"Agent: {self.unique_id} reached its destination!")
+            self.model.bikes_arrived += 1
             self.model.grid.remove_agent(self)
             self.model.schedule.remove(self)
             self.model.deregister_agent(self)

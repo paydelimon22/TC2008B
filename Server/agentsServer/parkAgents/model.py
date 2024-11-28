@@ -18,6 +18,17 @@ class ParkModel(Model):
         self.traffic_lights = []
         self.graph = []
 
+        self.bikes_spawned = 0
+        self.bikes_in_model = 0
+        self.bikes_arrived = 0
+        self.bikes_stopped = 0
+        self.bikes_moving = 0
+
+        self.ratio_arrived = 0
+        self.ratio_alive = 0
+        self.ratio_moving = 0
+        self.ratio_stopped = 0
+        
         # Load the map file. The map file is a text file where each character represents an agent.
         with open("park_files/2024_base.txt") as baseFile:
             lines = baseFile.readlines()
@@ -112,14 +123,26 @@ class ParkModel(Model):
     def step(self):
         """Advance the model by one step."""
         # Spawn new bikes every 10 episodes
-        if self.schedule.steps % 10 == 0:
+        if self.schedule.steps % 2 == 0:
             self.spawn_bikes()
 
         if len(self.agents_by_type[Bike]) == len(self.agents_by_type[Road]):
             self.running = False
             return
+        
+        self.bikes_in_model = len(self.get_agents_of_type(Bike))
+        self.ratio_alive = self.bikes_in_model/self.bikes_spawned
+        self.ratio_arrived = self.bikes_arrived/self.bikes_spawned
+
+        self.bikes_moving = len([bike for bike in self.get_agents_of_type(Bike) if bike.moving])
+        self.bikes_stopped = self.bikes_in_model - self.bikes_moving
+
+        self.ratio_moving = self.bikes_moving/self.bikes_in_model
+        self.ratio_stopped = self.bikes_stopped/self.bikes_in_model
 
         self.schedule.step()
+
+        print(f"BIKES SPAWNED: {self.bikes_spawned}, \nIN MAP: {self.bikes_in_model}, \nARRIVED: {self.bikes_arrived}, {self.ratio_arrived}, \nMOVING: {self.bikes_moving}, \nSTOPPED: {self.bikes_stopped}")
 
     def spawn_bikes(self):
         """Spawn new bikes at the empty corners of the grid."""
@@ -145,6 +168,7 @@ class ParkModel(Model):
             new_bike = Bike(self.next_id(), self, self.random.choice(destination_pos))
             self.grid.place_agent(new_bike, corner)
             self.schedule.add(new_bike)
+            self.bikes_spawned += 1
 
     def get_possible_roads(self, road):
         neighbor_roads = [
