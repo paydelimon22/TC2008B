@@ -452,7 +452,11 @@ function drawAgents(
             if (i == 1) {
                 wheel_trans = twgl.v3.negate(wheel_trans);
             };
-            let wheel_rotation = 0;
+
+            let wheel_rotation = 2 * Math.PI * frameCount / 30
+            if (twgl.v3.distance(agent_old_pos, agent_new_pos) == 0) {
+                wheel_rotation = 0;
+            }
 
             // Calculate the wheel's matrix
             let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
