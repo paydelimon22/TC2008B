@@ -108,6 +108,9 @@ async function main() {
             tile: {
                 tree1: new WebGLObject(assets_arrays.tree1),
                 tree2: new WebGLObject(assets_arrays.tree2),
+                rock1: new WebGLObject(assets_arrays.rock1),
+                rock2: new WebGLObject(assets_arrays.rock2),
+                trash_can: new WebGLObject(assets_arrays.trash_can),
             },
         },
     };
@@ -230,18 +233,38 @@ async function getMap() {
                     }
                 }
             );
-            console.log("Traffic lights:", map_tiles.traffic_lights);
             map_tiles.obstacles.map(
                 obstacle => {
-                    if (Math.random() < 0.5) {
-                        obstacle.decorator = "tree1";
-                    } else {
-                        obstacle.decorator = "tree2";
+                    let random = Math.random();
+                    const tree_chance = 0.65
+                    const rock_chance = 0.2
+                    const trash_can_chance = 0.05
+                    if (random < tree_chance) {
+                        if (random < tree_chance / 2) {
+                            obstacle.decorator = "tree1";
+                        } else {
+                            obstacle.decorator = "tree2";
+                        }
+                        return
+                    }
+                    random -= tree_chance
+                    if (random < rock_chance) {
+                        if (random < rock_chance / 2) {
+                            obstacle.decorator = "rock1";
+                        } else {
+                            obstacle.decorator = "rock2";
+                        }
+                        return
+                    }
+                    random -= rock_chance
+                    if (random < trash_can_chance) {
+                        obstacle.decorator = "trash_can";
+                        return
                     }
                 }
             );
             // Log the map_tiles array
-            console.log("Map:", map_tiles)
+            console.log("Map:", map_tiles);
         }
     } catch (error) {
         // Log any errors that occur during the request
@@ -500,7 +523,8 @@ function drawMap(distance, map_WebGL, viewProjectionMatrix) {
             twgl.setUniforms(programInfo, uniforms);
             twgl.drawBufferInfo(gl, model.buffer_info);
 
-            if (tile_type == "obstacles" && !map_tiles.destinations.find(
+            if (tile_type == "obstacles" && tile.decorator
+                && !map_tiles.destinations.find(
                     destination => destination.position.every(
                         (pos, index) => pos == tile.position[index]
                     )
