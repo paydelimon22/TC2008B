@@ -108,32 +108,43 @@ class Bike(Agent):
         self.moving = False
 
         cell_empty = True
+
         agents_path = self.model.grid.get_cell_list_contents(self.path[0])
         for agent in agents_path:
             if isinstance(agent, Bike):
                 cell_empty = False
         
+        #Try moving to the first road in path
         if cell_empty:
             next_step = self.path.pop(0)
-            self.not_moved_count = 0
-            self.moving =True
-        else:
-            empty_neighbors = [
-                neighbor for neighbor in
-                self.model.graph_get(self.pos)
-                if not isinstance(neighbor,Bike)
-            ]
+            print(f"Bike {self.unique_id} moved from {self.pos} towards {next_step} following it's path")
 
+        else:
+            #Find empty available neighbors
+            empty_neighbors = []
+
+            neighbors_list = [neighbor.pos for neighbor in self.model.graph_get(self.pos)]
+            
+            for neighbor in neighbors_list:
+                bikes_found = [agent for agent in self.model.grid.get_cell_list_contents(neighbor) if isinstance(agent, Bike)]
+                if len(bikes_found) == 0:
+                    empty_neighbors.append(neighbor)
+
+            #By default, the next step will be the current pos
             next_step = self.pos
             self.not_moved_count += 1
+
+            #For each of the possible empty neighbors,
+            #find the neighbor that can reach the next road in the path
             for neighbor in empty_neighbors:
-                if len(self.path) > 1 and self.path[1] in [neighbor.pos for neighbor in self.model.graph_get(neighbor.pos)]:
-                    next_step = neighbor.pos
-                    self.not_moved_count = 0
+                if len(self.path) > 1 and self.path[1] in [neighbor for neighbor in self.model.graph_get(neighbor)]:
+                    next_step = neighbor
+                    print(f"Bike {self.unique_id} moved towards {next_step} by choosing an empty neighbor that stays on track")
                     self.path.pop(0)
                     self.moving = True
                     break
         
+        #Move towards next step and determine new direction
         self.model.grid.move_agent(self, next_step)
         self.direction = next(filter(
             lambda a: isinstance(a, Road),
