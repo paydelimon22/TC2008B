@@ -207,6 +207,12 @@ async function getAgents() {
                             old_agent.rotation[1],
                             old_agent.rotation[2],
                         ];
+                        let diff_rot = agent.old_rotation[1] - agent.rotation[1];
+                        if (diff_rot > Math.PI) {
+                            agent.old_rotation[1] -= 2 * Math.PI;
+                        } else if (diff_rot < -Math.PI) {
+                            agent.old_rotation[1] += 2 * Math.PI;
+                        }
                     }
 
                     return agent;
@@ -407,11 +413,18 @@ function drawAgents(
         );
         const agent_scale = twgl.v3.create(...agent.scale);
 
+        const agent_old_rot = twgl.v3.create(...agent.old_rotation);
+        const agent_new_rot = twgl.v3.create(...agent.rotation);
+        const agent_lerp_rot = twgl.v3.lerp(
+            agent_old_rot, agent_new_rot, frameCount / 30
+        );
+        let diff_rot = agent.old_rotation[1] - agent.rotation[1];
+
         // Calculate the agent's matrix
         agent.matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
-        agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
-        agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
-        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
+        agent.matrix = twgl.m4.rotateX(agent.matrix, agent_lerp_rot[0]);
+        agent.matrix = twgl.m4.rotateY(agent.matrix, agent_lerp_rot[1]);
+        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent_lerp_rot[2]);
         agent.matrix = twgl.m4.scale(agent.matrix, agent_scale);
 
         const agent_worldViewProjection = twgl.m4.multiply(
@@ -443,9 +456,9 @@ function drawAgents(
 
             // Calculate the wheel's matrix
             let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
-            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
-            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent.rotation[1]);
-            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
+            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent_lerp_rot[0]);
+            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent_lerp_rot[1]);
+            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent_lerp_rot[2]);
             wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
             wheel_matrix = twgl.m4.rotateX(wheel_matrix, wheel_rotation);
             wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
