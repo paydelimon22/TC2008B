@@ -57,7 +57,7 @@ def getAgents():
         # Note that the positions are sent as a list of dictionaries, where each dictionary has the id and position of an agent.
         # The y coordinate is set to 1, since the agents are in a 3D world. The z coordinate corresponds to the row (y coordinate) of the grid in mesa.
         try:
-            agentPositions = [
+            agentInfo = [
                 {
                     "id": str(a.unique_id),
                     "x": x,
@@ -70,7 +70,7 @@ def getAgents():
                 if isinstance(a, Bike)
             ]
 
-            return jsonify({"positions": agentPositions})
+            return jsonify({"agents": agentInfo})
         except Exception as e:
             print(traceback.format_exc())
             print(e)

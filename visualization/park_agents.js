@@ -39,7 +39,7 @@ class WebGLObject {
 const agent_server_uri = "http://localhost:8585/";
 
 // Initialize arrays to store agents and map_tiles
-const agents = [];
+let agents = [];
 const map_tiles = {};
 
 // Initialize WebGL-related variables
@@ -168,25 +168,59 @@ async function getAgents() {
             console.log(result.positions)
 
             // Create new agents and add them to the agents array
-            agents.length = 0;
+            agents = result.agents.map(
+                new_agent => {
+                    let agent = new Object3D(
+                        new_agent.id, [new_agent.x, new_agent.y, new_agent.z]
+                    );
 
-            for (const agent of result.positions) {
-                const newAgent = new Object3D(
-                    agent.id, [agent.x, agent.y, agent.z]
-                );
-                switch (agent.direction) {
-                    case "Right":
-                        newAgent.rotation[1] = Math.PI / 2;
-                        break;
-                    case "Left":
-                        newAgent.rotation[1] = -Math.PI / 2;
-                        break;
-                    case "Down":
-                        newAgent.rotation[1] = Math.PI;
-                        break;
+                    switch (new_agent.direction) {
+                        case "Right":
+                            agent.rotation[1] = Math.PI / 2;
+                            break;
+                        case "Left":
+                            agent.rotation[1] = -Math.PI / 2;
+                            break;
+                        case "Down":
+                            agent.rotation[1] = Math.PI;
+                            break;
+                    }
+
+                    agent.old_position = [
+                        new_agent.x, new_agent.y, new_agent.z
+                    ];
+                    agent.old_rotation = [
+                        agent.rotation[0],
+                        agent.rotation[1],
+                        agent.rotation[2],
+                    ];
+
+                    let old_agent = agents.find(
+                        old_a => old_a.id == new_agent.id
+                    );
+
+                    if (old_agent != undefined) {
+                        agent.old_position = [
+                            old_agent.position[0],
+                            old_agent.position[1],
+                            old_agent.position[2],
+                        ];
+                        agent.old_rotation = [
+                            old_agent.rotation[0],
+                            old_agent.rotation[1],
+                            old_agent.rotation[2],
+                        ];
+                        let diff_rot = agent.old_rotation[1] - agent.rotation[1];
+                        if (diff_rot > Math.PI) {
+                            agent.old_rotation[1] -= 2 * Math.PI;
+                        } else if (diff_rot < -Math.PI) {
+                            agent.old_rotation[1] += 2 * Math.PI;
+                        }
+                    }
+
+                    return agent;
                 }
-                agents.push(newAgent)
-            }
+            );
             // Log the agents array
             console.log("Agents:", agents)
         }
@@ -391,16 +425,29 @@ function drawAgents(
         gl.bindVertexArray(agent_WebGL.frame.vao);
 
         // Create the agent's transformation matrix
+        const agent_old_pos = twgl.v3.create(...agent.old_position);
+        const agent_new_pos = twgl.v3.create(...agent.position);
+        const agent_lerp_pos = twgl.v3.lerp(
+            agent_old_pos, agent_new_pos, frameCount / 30
+        );
+        const vertical_offset = twgl.v3.create(0, 0.25, 0);
         const agent_trans = twgl.v3.add(
-            twgl.v3.create(...agent.position), twgl.v3.create(0, 0.25, 0)
+            agent_lerp_pos, vertical_offset
         );
         const agent_scale = twgl.v3.create(...agent.scale);
 
+        const agent_old_rot = twgl.v3.create(...agent.old_rotation);
+        const agent_new_rot = twgl.v3.create(...agent.rotation);
+        const agent_lerp_rot = twgl.v3.lerp(
+            agent_old_rot, agent_new_rot, frameCount / 30
+        );
+        let diff_rot = agent.old_rotation[1] - agent.rotation[1];
+
         // Calculate the agent's matrix
         agent.matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
-        agent.matrix = twgl.m4.rotateX(agent.matrix, agent.rotation[0]);
-        agent.matrix = twgl.m4.rotateY(agent.matrix, agent.rotation[1]);
-        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent.rotation[2]);
+        agent.matrix = twgl.m4.rotateX(agent.matrix, agent_lerp_rot[0]);
+        agent.matrix = twgl.m4.rotateY(agent.matrix, agent_lerp_rot[1]);
+        agent.matrix = twgl.m4.rotateZ(agent.matrix, agent_lerp_rot[2]);
         agent.matrix = twgl.m4.scale(agent.matrix, agent_scale);
 
         const agent_worldViewProjection = twgl.m4.multiply(
@@ -428,13 +475,17 @@ function drawAgents(
             if (i == 1) {
                 wheel_trans = twgl.v3.negate(wheel_trans);
             };
-            let wheel_rotation = 0;
+
+            let wheel_rotation = 2 * Math.PI * frameCount / 30
+            if (twgl.v3.distance(agent_old_pos, agent_new_pos) == 0) {
+                wheel_rotation = 0;
+            }
 
             // Calculate the wheel's matrix
             let wheel_matrix = twgl.m4.translate(twgl.m4.identity(), agent_trans);
-            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent.rotation[0]);
-            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent.rotation[1]);
-            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent.rotation[2]);
+            wheel_matrix = twgl.m4.rotateX(wheel_matrix, agent_lerp_rot[0]);
+            wheel_matrix = twgl.m4.rotateY(wheel_matrix, agent_lerp_rot[1]);
+            wheel_matrix = twgl.m4.rotateZ(wheel_matrix, agent_lerp_rot[2]);
             wheel_matrix = twgl.m4.translate(wheel_matrix, wheel_trans);
             wheel_matrix = twgl.m4.rotateX(wheel_matrix, wheel_rotation);
             wheel_matrix = twgl.m4.scale(wheel_matrix, agent_scale);
