@@ -161,7 +161,7 @@ class Bike(Agent):
                 #print(f"CASE 3: Bike {self.unique_id} moved towards {neighbor} by choosing an empty neighbor that stays on track")
                 return
                  
-        if self.impatience >= 2:
+        if self.impatience >= 1:
             print(f"CASE 4: Bike {self.unique_id} is recalculating it's route after becoming impatient")
             self.impatience = 0
             self.get_route()
