@@ -133,6 +133,9 @@ class ParkModel(Model):
             self.running = False
             return
 
+        self.calculate_data()
+
+    def calculate_data(self):
         self.bikes_in_model = len(self.get_agents_of_type(Bike))
         self.ratio_alive = self.bikes_in_model / self.bikes_spawned
         self.ratio_arrived = self.bikes_arrived / self.bikes_spawned

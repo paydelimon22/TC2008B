@@ -156,8 +156,8 @@ async function initAgentsModel() {
            console.log(result.message)
            data.width = result.width;
            data.height = result.height;
-           light.position.x = data.width;
-           light.position.z = data.height;
+           settings.light.position.x = data.width;
+           settings.light.position.z = data.height;
         }
     } catch (error) {
         // Log any errors that occur during the request
